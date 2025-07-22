@@ -1,83 +1,129 @@
 Question	Answer	Tags
-How would you describe their work of breathing?	"- Mild
-- Moderate
-- Severe"	
-How would you describe their work of breathing?	"- Mild
-- Moderate
-- Severe"	
-How would you describe their work of breathing?	"- Mild
-- Severe
-- Moderate"	
-What process is likely causing their dyspnea?	"- Upper Airway Obstruction
-- Lower Airway Obstruction
-- Parenchymal Disease"	
-What is the most likely diagnosis?	"- Pneumonia
-- Croup
-- Congestive Heart Failure
-- Asthma
-- Bronchiolitis"	
-How would you treat this patient?	"- Salbutamol
-- Supportive care
-- Antibiotics
-- Dexamethasone"	
-How would you best describe their work of breathing?	"- Mild
-- Moderate
-- Severe"	
-How would you best describe their work of breathing?	"- Mild
-- Moderate
-- Severe"	
-How would you best describe their work of breathing?	"- Mild
-- Moderate
-- Severe"	
-What process is likely causing their dyspnea?	"- Upper Airway Obstruction
-- Parenchymal Disease
-- Lower Airway Obstruction"	
-What is the most likely diagnosis?	"- Congestive Heart Failure
-- Croup
-- Asthma
-- Bronchiolitis
-- Pneumonia"	
-How would you treat this patient?	"- Antibiotics
-- Salbutamol & Dexamethasone
-- Supportive care"	
-How would you best describe their work of breathing?	"- Mild
-- Moderate
-- Severe"	
-How would you best describe their work of breathing?	"- Mild
-- Moderate
-- Severe"	
-How would you best describe their work of breathing?	"- Mild
-- Moderate
-- Severe"	
-What process is likely causing their dyspnea?	"- Upper Airway Obstruction
-- Parenchymal Disease
-- Lower Airway Obstruction"	
-What is the most likely diagnosis?	"- Bronchiolitis
-- Asthma
-- Pneumonia
-- Croup
-- Congestive Heart Failure"	
-How would you treat this patient?	"- Antibiotics
-- Supportive care
-- Dexamethasone
-- Salbutamol"	
-What process is likely causing their dyspnea?	"- Lower Airway Obstruction
-- Parenchymal Disease
-- Upper Airway Obstruction"	
-What is the most likely diagnosis?	"- Congestive Heart Failure
-- Bronchiolitis
-- Asthma
-- Pneumonia
-- Croup"	
-What is the most likely diagnosis?	"- Pneumonia
-- Asthma
-- Bronchiolitis
-- Croup
-- Congestive Heart Failure"	
-What process is likely causing their dyspnea?	"- Upper Airway Obstruction
-- Lower Airway Obstruction
-- Parenchymal Disease"	
-How would you treat this patient?	"- Dexamethasone
-- Supportive care
-- Antibiotics
-- Salbutamol"	
+"How would you describe their work of breathing?
+
+1. Mild
+2. Moderate
+3. Severe"	Mild	
+"How would you describe their work of breathing?
+
+1. Mild
+2. Moderate
+3. Severe"	Mild	
+"How would you describe their work of breathing?
+
+1. Moderate
+2. Severe
+3. Mild"	Moderate	
+"What process is likely causing their dyspnea?
+
+1. Parenchymal Disease
+2. Lower Airway Obstruction
+3. Upper Airway Obstruction"	Parenchymal Disease	
+"What is the most likely diagnosis?
+
+1. Bronchiolitis
+2. Pneumonia
+3. Asthma
+4. Croup
+5. Congestive Heart Failure"	Bronchiolitis	
+"How would you treat this patient?
+
+1. Salbutamol
+2. Antibiotics
+3. Dexamethasone
+4. Supportive care"	Salbutamol	
+"How would you best describe their work of breathing?
+
+1. Mild
+2. Moderate
+3. Severe"	Mild	
+"How would you best describe their work of breathing?
+
+1. Mild
+2. Moderate
+3. Severe"	Mild	
+"How would you best describe their work of breathing?
+
+1. Mild
+2. Moderate
+3. Severe"	Mild	
+"What process is likely causing their dyspnea?
+
+1. Lower Airway Obstruction
+2. Upper Airway Obstruction
+3. Parenchymal Disease"	Lower Airway Obstruction	
+"What is the most likely diagnosis?
+
+1. Asthma
+2. Congestive Heart Failure
+3. Croup
+4. Pneumonia
+5. Bronchiolitis"	Asthma	
+"How would you treat this patient?
+
+1. Antibiotics
+2. Supportive care
+3. Salbutamol & Dexamethasone"	Antibiotics	
+"How would you best describe their work of breathing?
+
+1. Mild
+2. Moderate
+3. Severe"	Mild	
+"How would you best describe their work of breathing?
+
+1. Mild
+2. Moderate
+3. Severe"	Mild	
+"How would you best describe their work of breathing?
+
+1. Mild
+2. Moderate
+3. Severe"	Mild	
+"What process is likely causing their dyspnea?
+
+1. Parenchymal Disease
+2. Upper Airway Obstruction
+3. Lower Airway Obstruction"	Parenchymal Disease	
+"What is the most likely diagnosis?
+
+1. Croup
+2. Bronchiolitis
+3. Asthma
+4. Pneumonia
+5. Congestive Heart Failure"	Croup	
+"How would you treat this patient?
+
+1. Dexamethasone
+2. Antibiotics
+3. Salbutamol
+4. Supportive care"	Dexamethasone	
+"What process is likely causing their dyspnea?
+
+1. Lower Airway Obstruction
+2. Parenchymal Disease
+3. Upper Airway Obstruction"	Lower Airway Obstruction	
+"What is the most likely diagnosis?
+
+1. Bronchiolitis
+2. Asthma
+3. Pneumonia
+4. Croup
+5. Congestive Heart Failure"	Bronchiolitis	
+"What is the most likely diagnosis?
+
+1. Bronchiolitis
+2. Asthma
+3. Congestive Heart Failure
+4. Pneumonia
+5. Croup"	Bronchiolitis	
+"What process is likely causing their dyspnea?
+
+1. Upper Airway Obstruction
+2. Lower Airway Obstruction
+3. Parenchymal Disease"	Upper Airway Obstruction	
+"How would you treat this patient?
+
+1. Dexamethasone
+2. Salbutamol
+3. Supportive care
+4. Antibiotics"	Dexamethasone	

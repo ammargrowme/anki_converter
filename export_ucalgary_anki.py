@@ -153,17 +153,42 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                 except NoSuchElementException:
                     question = "[No Question]"
 
-                # options
+                # Scrape options and detect the correct answer
                 opts_elems = driver.find_elements(
                     By.CSS_SELECTOR,
                     "#workspace > div.solution.container > form > div.options > div.option > label",
                 )
-                options = [o.text.strip() for o in opts_elems if o.text.strip()]
+                options = []
+                correct_answer = None
+                for idx, label in enumerate(opts_elems):
+                    text = label.text.strip()
+                    if not text:
+                        continue
+                    options.append(text)
+                    try:
+                        inp = label.find_element(
+                            By.XPATH, "preceding-sibling::input[@type='radio']"
+                        )
+                        if (
+                            inp.get_attribute("checked") in ("true", "checked")
+                            or inp.get_attribute("aria-checked") == "true"
+                        ):
+                            correct_answer = text
+                    except NoSuchElementException:
+                        pass
 
-                full_q = (
-                    f"{background}\n\n<b>{question}</b>" if background else question
+                if correct_answer is None and options:
+                    correct_answer = options[0]
+
+                formatted_opts = "\n".join(
+                    f"{i+1}. {opt}" for i, opt in enumerate(options)
                 )
-                answer = "\n".join(f"- {o}" for o in options)
+                if background:
+                    full_q = f"{background}\n\n<b>{question}</b>\n\n{formatted_opts}"
+                else:
+                    full_q = f"{question}\n\n{formatted_opts}"
+
+                answer = correct_answer or "[No Answer Found]"
                 cards.append(
                     {
                         "id": cid,
@@ -247,18 +272,42 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                     question = "[No Question]"
                 logger.debug(f"  question → {question!r}")
 
-                # options
+                # Scrape options and detect the correct answer
                 opts_elems = driver.find_elements(
                     By.CSS_SELECTOR,
                     "#workspace > div.solution.container > form > div.options > div.option > label",
                 )
-                options = [o.text.strip() for o in opts_elems if o.text.strip()]
-                logger.debug(f"  options → {options}")
+                options = []
+                correct_answer = None
+                for idx, label in enumerate(opts_elems):
+                    text = label.text.strip()
+                    if not text:
+                        continue
+                    options.append(text)
+                    try:
+                        inp = label.find_element(
+                            By.XPATH, "preceding-sibling::input[@type='radio']"
+                        )
+                        if (
+                            inp.get_attribute("checked") in ("true", "checked")
+                            or inp.get_attribute("aria-checked") == "true"
+                        ):
+                            correct_answer = text
+                    except NoSuchElementException:
+                        pass
 
-                full_q = (
-                    f"{background}\n\n<b>{question}</b>" if background else question
+                if correct_answer is None and options:
+                    correct_answer = options[0]
+
+                formatted_opts = "\n".join(
+                    f"{i+1}. {opt}" for i, opt in enumerate(options)
                 )
-                answer = "\n".join(f"- {o}" for o in options)
+                if background:
+                    full_q = f"{background}\n\n<b>{question}</b>\n\n{formatted_opts}"
+                else:
+                    full_q = f"{question}\n\n{formatted_opts}"
+
+                answer = correct_answer or "[No Answer Found]"
                 cards.append(
                     {
                         "id": cid,
