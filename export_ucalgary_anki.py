@@ -129,18 +129,15 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                 cid = m.group(1)
 
                 # Now scrape the card page just like before
-                # background parts (two different table-layouts)
-                bg_selectors = [
-                    "body > div > div.container.card > div:nth-child(2) > table > tbody > tr > td",
-                    "body > div > div.container.card > div:nth-child(3) > div > div > div > table > tbody > tr > td",
-                ]
+                # background parts (paragraphs in card)
                 background_parts = []
-                for sel in bg_selectors:
-                    elems = driver.find_elements(By.CSS_SELECTOR, sel)
-                    for el in elems:
-                        txt = el.text.strip()
-                        if txt:
-                            background_parts.append(txt)
+                bg_elems = driver.find_elements(
+                    By.CSS_SELECTOR, "div.container.card div.block.group p"
+                )
+                for el in bg_elems:
+                    txt = el.text.strip()
+                    if txt:
+                        background_parts.append(txt)
                 background = "\n\n".join(background_parts).strip()
 
                 # question
@@ -245,19 +242,15 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                 time.sleep(2)
                 logger.debug(f"[card] title={driver.title!r}")
 
-                # background parts (two different table-layouts)
-                bg_selectors = [
-                    "body > div > div.container.card > div:nth-child(2) > table > tbody > tr > td",
-                    "body > div > div.container.card > div:nth-child(3) > div > div > div > table > tbody > tr > td",
-                ]
+                # background parts (paragraphs in card)
                 background_parts = []
-                for sel in bg_selectors:
-                    elems = driver.find_elements(By.CSS_SELECTOR, sel)
-                    logger.debug(f"  bg [{sel!r}] → {len(elems)} elems")
-                    for el in elems:
-                        txt = el.text.strip()
-                        if txt:
-                            background_parts.append(txt)
+                bg_elems = driver.find_elements(
+                    By.CSS_SELECTOR, "div.container.card div.block.group p"
+                )
+                for el in bg_elems:
+                    txt = el.text.strip()
+                    if txt:
+                        background_parts.append(txt)
                 background = "\n\n".join(background_parts).strip()
                 logger.debug(f"  background → {background!r}")
 
@@ -339,24 +332,91 @@ def export_csv(data, path):
 
 
 def export_apkg(data, deck_name, path):
-    model = genanki.Model(
+    # Extended MCQ model: fields for background, question, choices, correct index
+    mcq_model = genanki.Model(
         MODEL_ID,
-        "Basic Q&A",
-        fields=[{"name": "Question"}, {"name": "Answer"}],
+        "MCQ Q&A",
+        fields=[
+            {"name": "Background"},
+            {"name": "Question"},
+            {"name": "Choice1"},
+            {"name": "Choice2"},
+            {"name": "Choice3"},
+            {"name": "Choice4"},
+            {"name": "CorrectAnswer"},
+        ],
         templates=[
             {
                 "name": "Card 1",
-                "qfmt": "{{Question}}",
-                "afmt": "{{FrontSide}}<hr id=answer>{{Answer}}",
+                "qfmt": """
+{{Background}}<br><br>
+<b>{{Question}}</b>
+<ul>
+  {{#Choice1}}<li><label><input type="radio" name="choice">{{Choice1}}</label></li>{{/Choice1}}
+  {{#Choice2}}<li><label><input type="radio" name="choice">{{Choice2}}</label></li>{{/Choice2}}
+  {{#Choice3}}<li><label><input type="radio" name="choice">{{Choice3}}</label></li>{{/Choice3}}
+  {{#Choice4}}<li><label><input type="radio" name="choice">{{Choice4}}</label></li>{{/Choice4}}
+</ul>
+""",
+                "afmt": """
+{{FrontSide}}<hr id=answer>
+<b>Answer:</b> {{CorrectAnswer}}
+""",
             }
         ],
     )
     deck = genanki.Deck(DECK_ID_BASE, deck_name)
     for c in data:
+        # You now need to split out background, question, choices, and correct answer index
+        background = ""
+        question = c["question"]
+        choices = []
+        correct_idx = 1
+        # Split the full question into background, question, choices
+        if "\n\n" in question:
+            # Assume format: background\n\n<b>question</b>\n\n1. choice...
+            parts = question.split("\n\n")
+            if len(parts) == 3:
+                background = parts[0]
+                question_text = parts[1]
+                choices_text = parts[2]
+            else:
+                background = ""
+                question_text = parts[0]
+                choices_text = parts[1]
+        else:
+            background = ""
+            question_text = question
+            choices_text = ""
+        # Remove <b> tags
+        question_text = question_text.replace("<b>", "").replace("</b>", "")
+        # Parse choices
+        for line in choices_text.split("\n"):
+            if line.strip() and "." in line:
+                # Remove the number
+                opt = line.split(".", 1)[1].strip()
+                choices.append(opt)
+        # Map correct answer to index
+        correct_idx = 0
+        for i, opt in enumerate(choices):
+            if opt == c["answer"]:
+                correct_idx = i + 1  # Anki models often start from 1
+                break
+        # Pad choices up to 4 (or leave blank)
+        while len(choices) < 4:
+            choices.append("")
         deck.add_note(
             genanki.Note(
-                model=model,
-                fields=[c["question"], c["answer"]],
+                model=mcq_model,
+                fields=[
+                    background,
+                    question_text,
+                    choices[0],
+                    choices[1],
+                    choices[2],
+                    choices[3],
+                    c["answer"],
+                ],
                 tags=c.get("tags", []),
             )
         )
@@ -434,8 +494,8 @@ def main():
     cards = selenium_scrape_deck(deck_id, email, pw, host, bag_id, details_url)
     deck_name = f"Deck_{deck_id}"
 
-    export_json(cards, f"{args.out_prefix}.json")
-    export_csv(cards, f"{args.out_prefix}.csv")
+    # export_json(cards, f"{args.out_prefix}.json")
+    # export_csv(cards, f"{args.out_prefix}.csv")
     export_apkg(cards, deck_name, f"{args.out_prefix}.apkg")
 
 
