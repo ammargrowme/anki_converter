@@ -463,9 +463,11 @@ hr#answer-divider { border: none; border-top: 1px solid #888; margin: 16px 0; }
                 "qfmt": """
 {{Front}}
 <script>
-document.addEventListener('DOMContentLoaded', function(){
-  var cid = "{{CardId}}", key = "sel_"+cid,
-      saved = JSON.parse(localStorage.getItem(key) || '[]');
+(function(){
+  var cid = "{{CardId}}", key = "sel_"+cid;
+  // Reset stored selections each time the card front loads
+  localStorage.removeItem(key);
+  var saved = JSON.parse(localStorage.getItem(key) || '[]');
   saved.forEach(function(id){
     var inp = document.getElementById(id);
     if(inp) inp.checked = true;
@@ -478,24 +480,24 @@ document.addEventListener('DOMContentLoaded', function(){
       localStorage.setItem(key, JSON.stringify(sel));
     });
   });
-});
+})();
 </script>
 """,
                 "afmt": """
 {{Front}}
 <script>
-document.addEventListener('DOMContentLoaded', function(){
+(function(){
   var cid = "{{CardId}}", key = "sel_"+cid,
       saved = JSON.parse(localStorage.getItem(key) || '[]');
   saved.forEach(function(id){
     var inp = document.getElementById(id);
     if(inp) inp.checked = true;
   });
-});
+})();
 </script>
 <hr id="answer-divider">
 <script>
-document.addEventListener('DOMContentLoaded', function(){
+(function(){
   var answers = "{{CorrectAnswer}}".split(",").map(function(s){ return s.trim(); });
   document.querySelectorAll('.option label').forEach(function(lbl){
     var text = lbl.innerText.trim(),
@@ -506,13 +508,33 @@ document.addEventListener('DOMContentLoaded', function(){
       lbl.classList.add('incorrect');
     }
   });
-});
+})();
 </script>
 <div id="answer-section">
   <b>Correct answer(s):</b> {{CorrectAnswer}}<br>
-  <b>Score:</b> {{ScoreText}}<br>
-  <b>Percent:</b> {{Percent}}
+  <b>Score:</b> <span id="score-text">{{ScoreText}}</span><br>
+  <b>Percent:</b> <span id="percent-text">{{Percent}}</span>
 </div>
+<script>
+(function(){
+  var answers = "{{CorrectAnswer}}".split(",").map(function(s){ return s.trim(); });
+  var selected = Array.from(document.querySelectorAll('.option input:checked')).map(function(inp){ return inp.value; });
+  var correctLen = answers.length;
+  var selectedCorrect = 0;
+  selected.forEach(function(val){
+    if(answers.includes(val)) selectedCorrect++;
+  });
+  var scoreEl = document.getElementById('score-text');
+  var pctEl = document.getElementById('percent-text');
+  if(scoreEl){
+    scoreEl.innerText = selectedCorrect + " / " + correctLen;
+  }
+  if(pctEl){
+    var pct = correctLen > 0 ? Math.round((selectedCorrect / correctLen) * 100) : 0;
+    pctEl.innerText = pct + "%";
+  }
+})();
+</script>
 {{#Sources}}
 <hr>
 <div id="sources">
