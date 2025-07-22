@@ -194,6 +194,8 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                 feedback = json_resp.get("feedback", "").strip()
                 score_text = json_resp.get("scoreText", "").strip()
                 sources = []
+                # Compute percentage score
+                percent = f"{json_resp.get('score', 0)}%"
                 # Build options and correct_answers lists by matching IDs
                 options = [text for oid, text in option_info]
                 correct_answers = [
@@ -241,6 +243,7 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                         "tags": [],
                         "images": [],
                         "multi": multi_flag,
+                        "percent": percent,
                     }
                 )
             return cards
@@ -356,6 +359,8 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                 feedback = json_resp.get("feedback", "").strip()
                 score_text = json_resp.get("scoreText", "").strip()
                 sources = []
+                # Compute percentage score
+                percent = f"{json_resp.get('score', 0)}%"
                 # Build options and correct_answers lists by matching IDs
                 options = [text for oid, text in option_info]
                 correct_answers = [
@@ -403,6 +408,7 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                         "tags": [],
                         "images": [],
                         "multi": multi_flag,
+                        "percent": percent,
                     }
                 )
             return cards
@@ -427,7 +433,6 @@ def export_csv(data, path):
 
 
 def export_apkg(data, deck_name, path):
-    # Simplified MCQ model: Front, CorrectAnswer, Explanation, Multi
     mcq_model = genanki.Model(
         MODEL_ID,
         "MCQ Q&A",
@@ -436,43 +441,87 @@ def export_apkg(data, deck_name, path):
             {"name": "CorrectAnswer"},
             {"name": "Explanation"},
             {"name": "ScoreText"},
+            {"name": "Percent"},
             {"name": "Sources"},
             {"name": "Multi"},
+            {"name": "CardId"},
         ],
+        css="""
+.background { margin-bottom: 16px; }
+.question    { font-size: 1.1em; margin-bottom: 8px; font-weight: bold; }
+.options     { border: 1px solid #666; padding: 10px; display: inline-block; }
+.option      { margin: 6px 0; }
+.option input{ margin-right: 6px; }
+#answer-section { margin-top: 12px; }
+.correct { color: green !important; font-weight: bold; }
+.incorrect { color: red !important; }
+hr#answer-divider { border: none; border-top: 1px solid #888; margin: 16px 0; }
+""",
         templates=[
             {
                 "name": "Card 1",
-                "qfmt": "{{Front}}",
-                "afmt": """{{Front}}
+                "qfmt": """
+{{Front}}
 <script>
-var ansfield = "{{CorrectAnswer}}";
-var ansList = ansfield.split(",").map(function(s) { return s.trim(); }).filter(Boolean);
-var opts = document.querySelectorAll('.option');
-if (ansList.length) {
-  opts.forEach(function(div) {
-    var lbl = div.querySelector('label');
-    var txt = lbl.innerText.trim();
-    if (ansList.includes(txt)) {
-      lbl.style.color = "green";
-      lbl.style.fontWeight = "bold";
-    } else {
-      lbl.style.color = "red";
+document.addEventListener('DOMContentLoaded', function(){
+  var cid = "{{CardId}}", key = "sel_"+cid,
+      saved = JSON.parse(localStorage.getItem(key) || '[]');
+  saved.forEach(function(id){
+    var inp = document.getElementById(id);
+    if(inp) inp.checked = true;
+  });
+  document.querySelectorAll('.option input').forEach(function(inp){
+    inp.addEventListener('change', function(){
+      var sel = Array.from(
+        document.querySelectorAll('.option input:checked')
+      ).map(function(e){ return e.id; });
+      localStorage.setItem(key, JSON.stringify(sel));
+    });
+  });
+});
+</script>
+""",
+                "afmt": """
+{{Front}}
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  var cid = "{{CardId}}", key = "sel_"+cid,
+      saved = JSON.parse(localStorage.getItem(key) || '[]');
+  saved.forEach(function(id){
+    var inp = document.getElementById(id);
+    if(inp) inp.checked = true;
+  });
+});
+</script>
+<hr id="answer-divider">
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  var answers = "{{CorrectAnswer}}".split(",").map(function(s){ return s.trim(); });
+  document.querySelectorAll('.option label').forEach(function(lbl){
+    var text = lbl.innerText.trim(),
+        inp  = document.getElementById(lbl.getAttribute('for'));
+    if(answers.includes(text)){
+      lbl.classList.add('correct');
+    } else if(inp && inp.checked){
+      lbl.classList.add('incorrect');
     }
   });
-}
+});
 </script>
-<div id="answer-text"><b>Correct answer(s):</b> {{CorrectAnswer}}</div>
-<div id="score-text"><b>Correct answers:</b> {{ScoreText}}</div>
+<div id="answer-section">
+  <b>Correct answer(s):</b> {{CorrectAnswer}}<br>
+  <b>Score:</b> {{ScoreText}}<br>
+  <b>Percent:</b> {{Percent}}
+</div>
 {{#Sources}}
-<hr/>
-<div id="sources"><b>Sources:</b>
-  <ul>
-    {{{Sources}}}
-  </ul>
+<hr>
+<div id="sources">
+  <b>Sources:</b><br>
+  {{{Sources}}}
 </div>
 {{/Sources}}
-<hr/>
-<div><b>Explanation:</b> {{Explanation}}</div>
+<hr>
+<div id="explanation"><b>Explanation:</b> {{Explanation}}</div>
 """,
             }
         ],
@@ -488,7 +537,7 @@ if (ansList.length) {
         logger.debug(f"Card {c['id']} multi-select flag={multi_flag}")
         # Build sources_html as HTML list items for the Sources field
         sources_html = "".join(f"<li>{src}</li>" for src in c.get("sources", []))
-        # Use question HTML as Front, answer, explanation, score_text, sources (as HTML), and multi flag
+        # Use question HTML as Front, answer, explanation, score_text, percent, sources (as HTML), multi flag, and CardId
         deck.add_note(
             genanki.Note(
                 model=mcq_model,
@@ -497,8 +546,10 @@ if (ansList.length) {
                     c["answer"],
                     c.get("explanation", ""),
                     c.get("score_text", ""),
+                    c.get("percent", ""),
                     sources_html,
                     multi,
+                    c["id"],
                 ],
                 tags=c.get("tags", []),
             )
