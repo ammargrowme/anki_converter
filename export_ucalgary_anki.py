@@ -447,15 +447,40 @@ def export_apkg(data, deck_name, path):
             {"name": "CardId"},
         ],
         css="""
+.option label {
+  padding: 6px 12px;
+  display: block;
+  cursor: pointer;
+  border-radius: 3px;
+  margin: 4px 0;
+}
+.options {
+  border: 1px solid #888;
+  border-radius: 4px;
+  padding: 12px;
+  display: inline-block;
+}
+#answer-section {
+  margin-top: 12px;
+}
+hr#answer-divider {
+  border: none;
+  border-top: 1px solid #888;
+  margin: 20px 0;
+}
 .background { margin-bottom: 16px; }
 .question    { font-size: 1.1em; margin-bottom: 8px; font-weight: bold; }
-.options     { border: 1px solid #666; padding: 10px; display: inline-block; }
 .option      { margin: 6px 0; }
 .option input{ margin-right: 6px; }
-#answer-section { margin-top: 12px; }
-.correct { color: green !important; font-weight: bold; }
-.incorrect { color: red !important; }
-hr#answer-divider { border: none; border-top: 1px solid #888; margin: 16px 0; }
+.option.correct label {
+  background-color: #d4f8d4 !important;
+  color: #063 !important;
+  font-weight: bold;
+}
+.option.incorrect label {
+  background-color: #f8d4d4 !important;
+  color: #630 !important;
+}
 """,
         templates=[
             {
@@ -484,6 +509,7 @@ document.addEventListener('DOMContentLoaded', function(){
                 "afmt": """
 {{Front}}
 <script>
+// restore selected inputs first
 document.addEventListener('DOMContentLoaded', function(){
   var cid = "{{CardId}}", key = "sel_"+cid,
       saved = JSON.parse(localStorage.getItem(key) || '[]');
@@ -495,6 +521,7 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 <hr id="answer-divider">
 <script>
+// highlight correct/incorrect after restoring selection
 document.addEventListener('DOMContentLoaded', function(){
   var answers = "{{CorrectAnswer}}".split(",").map(function(s){ return s.trim(); });
   document.querySelectorAll('.option label').forEach(function(lbl){
