@@ -11,11 +11,17 @@ Converts UofC Cards into an Anki `.apkg` deck using Selenium + Genanki.
 ## Table of Contents
 
 1. [Installation](#installation)
+   - [Install Homebrew & Dependencies](#install-homebrew--dependencies)
+   - [Clone & Setup Virtualenv](#clone--setup-virtualenv)
+   - [Windows (PowerShell)](#windows-powershell)
 2. [Configuration](#configuration)
+   - [Creating the .env file](#creating-the-env-file)
 3. [Usage](#usage)
+   - [Run Converter](#run-converter)
 4. [Flags](#flags)
 5. [Expectations](#expectations)
 6. [Troubleshooting](#troubleshooting)
+   - [Common Issues](#common-issues)
 7. [Tips](#tips)
 
 ---
@@ -76,16 +82,32 @@ pip install -r requirements.txt
 Provide your University of Calgary credentials and the target cards URL so the script can authenticate and fetch your cards.
 
 <details>
-<summary>.env File</summary>
+<summary>Creating the .env file</summary>
 Define environment variables for secure authentication without exposing credentials in code.
 
-Create `.env` in project root:
+1. Open your terminal or command prompt.
+2. Change directory to the cloned repo folder:
+   ```bash
+   cd anki_converter
+   ```
+3. Create a new file named `.env`:
+   - On macOS/Linux:
+     ```bash
+     touch .env
+     ```
+   - On Windows:
+     ```powershell
+     New-Item .env -ItemType File
+     ```
+4. Open `.env` in your preferred text editor and paste the following, replacing placeholders:
 
 ```ini
 UC_EMAIL=you@ucalgary.ca
 UC_PW=your_password
 UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>
 ```
+
+5. Save and close the file.
 
 </details>
 
