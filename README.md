@@ -41,18 +41,47 @@ Converts UofC Cards into an Anki `.apkg` deck using Selenium + Genanki.
    ```ini
    UC_EMAIL=your_ucalgary_email@example.com
    UC_PW=your_uc_password
-   UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>?bag_id=<BAG_ID>
-   # (optional) UC_BAG_ID=<bag_id_if_not_in_URL>
+   UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>
    ```
 
 5. **Run the converter (uses UC_BASE_URL from `.env`):**
    ```bash
    python export_ucalgary_anki.py
    ```
-   To override the details URL or specify a deck ID:
-   ```bash
-   python export_ucalgary_anki.py --deck <ID>
-   ```
+
+### Usage Scenarios
+
+1. **Env‐only configuration**
+
+   - Store **all three** values in `.env`:
+     ```ini
+     UC_EMAIL=you@ucalgary.ca
+     UC_PW=your_password
+     UC_BASE_URL=https://cards.ucalgary.ca/details/12345
+     ```
+   - Activate venv and run:
+     ```bash
+     python export_ucalgary_anki.py
+     ```
+
+2. **Env for credentials, CLI for URL**
+   - Store **only** email/password in `.env`:
+     ```ini
+     UC_EMAIL=you@ucalgary.ca
+     UC_PW=your_password
+     ```
+   - Run with override URL:
+     ```bash
+     python export_ucalgary_anki.py --base-url https://cards.ucalgary.ca/details/12345
+     ```
+
+To override the details URL or specify a deck ID:
+
+```bash
+python export_ucalgary_anki.py --deck <ID>
+```
+
+The script outputs a single Anki Package (`.apkg`) file. No JSON or CSV is produced.
 
 ---
 
@@ -89,8 +118,6 @@ python export_ucalgary_anki.py --deck <ID>
   Override `UC_PW` in `.env`.
 - `--base-url <URL>`  
   Override `UC_BASE_URL`.
-- `--out-prefix <prefix>`  
-  Prefix for output files (`.json`, `.csv`, `.apkg`). Defaults to `output`.
 
 ---
 
@@ -105,7 +132,8 @@ python export_ucalgary_anki.py --deck <ID>
   ```
 - **Progress bar:** Live “Scraping cards” via `tqdm`.
 - **Output:**  
-  Creates `Deck_<ID>/Deck_<ID>.apkg`.
+  A single Anki deck file `Deck_<ID>.apkg` in the current directory.
+  (No JSON or CSV is produced.)
 
 ---
 
