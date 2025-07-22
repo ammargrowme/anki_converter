@@ -38,24 +38,51 @@ MODEL_ID = 1607392319001
 
 # ─── Authentication ────────────────────────────────────────────────────────────
 def login(session, email, password):
-    """Authenticate against cards.ucalgary.ca and persist cookies in session."""
-    # Fetch login page to get CSRF token (if any)
-    r = session.get(LOGIN_URL)
-    r.raise_for_status()
-    soup = BeautifulSoup(r.text, "html.parser")
-    token_input = soup.find("input", {"name": "csrf_token"})
-    token = token_input["value"] if token_input else None
+    """
+    Log into cards.ucalgary.ca via its /login form, handling CSRF/hidden fields.
+    Raises RuntimeError if login doesn’t succeed.
+    """
+    # 1) Fetch the login page
+    resp = session.get(LOGIN_URL)
+    resp.raise_for_status()
+    soup = BeautifulSoup(resp.text, "html.parser")
 
-    payload = {"email": email, "password": password}
-    if token:
-        payload["csrf_token"] = token
+    # 2) Locate the login form (assume the first one)
+    form = soup.find("form")
+    if not form or not form.get("action"):
+        raise RuntimeError("Could not find the login form on /login")
 
-    r2 = session.post(LOGIN_URL, data=payload)
-    r2.raise_for_status()
-    if "Logout" not in r2.text:
-        raise RuntimeError(
-            "Login failed – please check your UC_EMAIL/UC_PW or credentials."
-        )
+    action = form["action"]
+    login_url = action if action.startswith("http") else f"{BASE_URL}{action}"
+
+    # 3) Build payload from all inputs
+    payload = {}
+    for inp in form.find_all("input"):
+        name = inp.get("name")
+        if not name:
+            continue
+        typ = inp.get("type", "").lower()
+        if typ == "email" or "user" in name.lower():
+            # override with the provided email
+            payload[name] = email
+        elif typ == "password":
+            # override with the provided password
+            payload[name] = password
+        else:
+            # hidden fields, tokens, etc.
+            payload[name] = inp.get("value", "")
+
+    # 4) POST credentials + hidden fields
+    post = session.post(login_url, data=payload)
+    post.raise_for_status()
+
+    # 5) Confirm login succeeded (look for “Logout” or redirect to /collection)
+    home = session.get(BASE_URL)
+    home.raise_for_status()
+    if "Logout" not in home.text and "collection" not in home.url:
+        raise RuntimeError("Login failed – check credentials or login form changes")
+
+    print("✅ Logged in successfully")
 
 
 # ─── Fetch / Parse Helpers ────────────────────────────────────────────────────
@@ -103,17 +130,75 @@ def parse_deck(html):
 
 
 # ─── Card / Media Fetching ────────────────────────────────────────────────────
-def fetch_card_data(card_id, session):
-    """Fetch one card’s data via the JSON API."""
-    url = f"{BASE_URL}/api/card/{card_id}.json"
-    data = fetch_json(url, session)
+from requests.exceptions import HTTPError
+from bs4 import BeautifulSoup
+import os
+
+
+def parse_card_html(html: str) -> dict:
+    """
+    Scrape question, answer, images, and tags directly from the card detail HTML.
+    Returns a dict matching the structure from the JSON API:
+      { 'id', 'question', 'answer', 'tags', 'images' }
+    """
+    soup = BeautifulSoup(html, "html.parser")
+
+    # 1) Question text: grab the scenario + prompt
+    #    They live in div.patient > div.question-container (example)
+    q_container = soup.select_one("div.patient div.question-container") or soup
+    question_text = q_container.get_text(separator="\n", strip=True)
+
+    # 2) Answer text: often in div.answer or after a div.result
+    a_el = soup.select_one("div.answer") or soup.select_one("div.result")
+    answer_text = a_el.get_text(separator="\n", strip=True) if a_el else ""
+
+    # 3) Images: any <img> under the card
+    images = []
+    for img in soup.select("div.patient img"):
+        src = img.get("src")
+        if not src:
+            continue
+        # make absolute
+        if src.startswith("/"):
+            src = f"https://cards.ucalgary.ca{src}"
+        images.append(src)
+
+    # 4) Tags / metadata: e.g. any .tag elements
+    tags = [t.get_text(strip=True) for t in soup.select(".tag")]
+
+    # 5) Download images now (so fetch_card_data stays consistent)
+    #    You may want to call download_media() here, but we'll do it in fetch_card_data.
     return {
-        "id": data["id"],
-        "question": data["question"].strip(),
-        "answer": data["answer"].strip(),
-        "tags": data.get("tags", []),
-        "images": data.get("images", []),
+        "question": question_text,
+        "answer": answer_text,
+        "tags": tags,
+        "images": images,
     }
+
+
+def fetch_card_data(card_id: str, session) -> dict:
+    """
+    Try JSON API first; on 404 fall back to HTML scraping via parse_card_html().
+    """
+    base = "https://cards.ucalgary.ca"
+    json_url = f"{base}/api/card/{card_id}.json"
+
+    try:
+        r = session.get(json_url)
+        r.raise_for_status()
+        data = r.json()
+    except HTTPError as e:
+        if r.status_code == 404:
+            print(f"→ JSON endpoint for {card_id} returned 404; falling back to HTML.")
+            detail_url = f"{base}/details/{card_id}?bag_id={card_id}"
+            html = session.get(detail_url).text
+            data = parse_card_html(html)
+        else:
+            raise
+
+    # Ensure we have the card ID in the returned dict
+    data.setdefault("id", card_id)
+    return data
 
 
 def download_media(media_urls, session, media_dir="media"):
@@ -253,6 +338,7 @@ def main():
     p.add_argument("--password", help="UCalgary password (overrides .env UC_PW)")
     p.add_argument(
         "--out-prefix",
+        dest="out_prefix",
         default="output",
         help="Prefix for output files (default: 'output')",
     )
@@ -282,9 +368,9 @@ def main():
         cards = gather_cards_from_deck(args.deck, session)
         deck_name = f"Deck_{args.deck}"
 
-    # Exports
+    # Correctly reference the out_prefix attribute
     out_json = f"{args.out_prefix}.json"
-    out_csv = f"{args.out-prefix}.csv"
+    out_csv = f"{args.out_prefix}.csv"
     out_apkg = f"{args.out_prefix}.apkg"
 
     export_json(cards, out_json)
