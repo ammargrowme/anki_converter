@@ -192,6 +192,8 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                     )
                 correct_ids = json_resp.get("answers", [])
                 feedback = json_resp.get("feedback", "").strip()
+                score_text = json_resp.get("scoreText", "").strip()
+                sources = []
                 # Build options and correct_answers lists by matching IDs
                 options = [text for oid, text in option_info]
                 correct_answers = [
@@ -203,13 +205,26 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                     f"Scraped card {cid}: options={options}, correct_ids={correct_ids}, correct_answers={correct_answers}"
                 )
                 # Format choices for front
-                formatted_opts = "\n".join(
-                    f"{i+1}. {opt}" for i, opt in enumerate(options)
+                # Build clickable options HTML
+                input_type = "checkbox" if multi_flag else "radio"
+                options_html = "".join(
+                    f'<div class="option">'
+                    f'<input type="{input_type}" name="choice" id="choice_{cid}_{i}" value="{opt}">'
+                    f'<label for="choice_{cid}_{i}">{opt}</label>'
+                    f"</div>"
+                    for i, opt in enumerate(options)
                 )
                 if background:
-                    full_q = f"{background}\n\n<b>{question}</b>\n\n{formatted_opts}"
+                    full_q = (
+                        f'<div class="background">{background}</div>'
+                        f'<div class="question"><b>{question}</b></div>'
+                        f'<div class="options">{options_html}</div>'
+                    )
                 else:
-                    full_q = f"{question}\n\n{formatted_opts}"
+                    full_q = (
+                        f'<div class="question"><b>{question}</b></div>'
+                        f'<div class="options">{options_html}</div>'
+                    )
                 answer = (
                     ", ".join(correct_answers)
                     if correct_answers
@@ -221,6 +236,8 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                         "question": full_q,
                         "answer": answer,
                         "explanation": feedback,
+                        "score_text": score_text,
+                        "sources": sources,
                         "tags": [],
                         "images": [],
                         "multi": multi_flag,
@@ -337,6 +354,8 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                     )
                 correct_ids = json_resp.get("answers", [])
                 feedback = json_resp.get("feedback", "").strip()
+                score_text = json_resp.get("scoreText", "").strip()
+                sources = []
                 # Build options and correct_answers lists by matching IDs
                 options = [text for oid, text in option_info]
                 correct_answers = [
@@ -348,13 +367,26 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                     f"Scraped card {cid}: options={options}, correct_ids={correct_ids}, correct_answers={correct_answers}"
                 )
                 # Format choices for front
-                formatted_opts = "\n".join(
-                    f"{i+1}. {opt}" for i, opt in enumerate(options)
+                # Build clickable options HTML
+                input_type = "checkbox" if multi_flag else "radio"
+                options_html = "".join(
+                    f'<div class="option">'
+                    f'<input type="{input_type}" name="choice" id="choice_{cid}_{i}" value="{opt}">'
+                    f'<label for="choice_{cid}_{i}">{opt}</label>'
+                    f"</div>"
+                    for i, opt in enumerate(options)
                 )
                 if background:
-                    full_q = f"{background}\n\n<b>{question}</b>\n\n{formatted_opts}"
+                    full_q = (
+                        f'<div class="background">{background}</div>'
+                        f'<div class="question"><b>{question}</b></div>'
+                        f'<div class="options">{options_html}</div>'
+                    )
                 else:
-                    full_q = f"{question}\n\n{formatted_opts}"
+                    full_q = (
+                        f'<div class="question"><b>{question}</b></div>'
+                        f'<div class="options">{options_html}</div>'
+                    )
                 answer = (
                     ", ".join(correct_answers)
                     if correct_answers
@@ -366,6 +398,8 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                         "question": full_q,
                         "answer": answer,
                         "explanation": feedback,
+                        "score_text": score_text,
+                        "sources": sources,
                         "tags": [],
                         "images": [],
                         "multi": multi_flag,
@@ -401,6 +435,8 @@ def export_apkg(data, deck_name, path):
             {"name": "Front"},
             {"name": "CorrectAnswer"},
             {"name": "Explanation"},
+            {"name": "ScoreText"},
+            {"name": "Sources"},
             {"name": "Multi"},
         ],
         templates=[
@@ -409,27 +445,34 @@ def export_apkg(data, deck_name, path):
                 "qfmt": "{{Front}}",
                 "afmt": """{{Front}}
 <script>
-// Color correct answers green, others red (supports multiple answers)
 var ansfield = "{{CorrectAnswer}}";
 var ansList = ansfield.split(",").map(function(s) { return s.trim(); }).filter(Boolean);
-var ul = document.getElementById("choices-list");
-if (ul && ansList.length) {
-  for (var i = 0; i < ul.children.length; ++i) {
-    var li = ul.children[i];
-    var txt = li.innerText.trim();
-    if (!txt) continue;
+var opts = document.querySelectorAll('.option');
+if (ansList.length) {
+  opts.forEach(function(div) {
+    var lbl = div.querySelector('label');
+    var txt = lbl.innerText.trim();
     if (ansList.includes(txt)) {
-      li.style.color = "green";
-      li.style.fontWeight = "bold";
+      lbl.style.color = "green";
+      lbl.style.fontWeight = "bold";
     } else {
-      li.style.color = "red";
+      lbl.style.color = "red";
     }
-  }
+  });
 }
 </script>
-<b>Correct answer(s):</b> {{CorrectAnswer}}
+<div id="answer-text"><b>Correct answer(s):</b> {{CorrectAnswer}}</div>
+<div id="score-text"><b>Correct answers:</b> {{ScoreText}}</div>
+{{#Sources}}
 <hr/>
-<b>Explanation:</b> {{Explanation}}
+<div id="sources"><b>Sources:</b>
+  <ul>
+    {{#Sources}}<li>{{.}}</li>{{/Sources}}
+  </ul>
+</div>
+{{/Sources}}
+<hr/>
+<div><b>Explanation:</b> {{Explanation}}</div>
 """,
             }
         ],
@@ -443,7 +486,7 @@ if (ul && ansList.length) {
         multi_flag = c.get("multi", False)
         multi = "1" if multi_flag else ""
         logger.debug(f"Card {c['id']} multi-select flag={multi_flag}")
-        # Use question HTML as Front, answer, explanation, and multi flag
+        # Use question HTML as Front, answer, explanation, score_text, sources, and multi flag
         deck.add_note(
             genanki.Note(
                 model=mcq_model,
@@ -451,6 +494,8 @@ if (ul && ansList.length) {
                     c["question"],
                     c["answer"],
                     c.get("explanation", ""),
+                    c.get("score_text", ""),
+                    "\n".join(c.get("sources", [])),
                     multi,
                 ],
                 tags=c.get("tags", []),
