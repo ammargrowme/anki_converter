@@ -16,116 +16,110 @@ Converts UofC Cards into an Anki `.apkg` deck using Selenium + Genanki.
 
 ### macOS / Linux
 
-1. Clone & enter project:
+1. **Clone & enter project:**
 
    ```bash
    git clone <repo_url> && cd anki_converter
-
    ```
 
-2. Make the setup script executable and run it:
+2. **Make setup script executable & install dependencies:**
 
-```
+   ```bash
+   chmod +x setup.sh
+   ./setup.sh
+   ```
 
-chmod +x setup.sh
-./setup.sh
-```
+3. **Activate the virtual environment:**
 
-3.  Activate the virtual environment:
+   ```bash
+   source .venv/bin/activate
+   ```
 
-source .venv/bin/activate
+4. **Configure credentials:**
+   Create a `.env` file in the project root with:
 
-4.  Configure your credentials:
+   ```ini
+   UC_EMAIL=your_ucalgary_email@example.com
+   UC_PW=your_uc_password
+   UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>?bag_id=<BAG_ID>
+   # (optional) UC_BAG_ID=<bag_id_if_not_in_URL>
+   ```
 
-Create a file named .env in the project root with these entries:
+5. **Run the converter (uses UC_BASE_URL from `.env`):**
+   ```bash
+   python export_ucalgary_anki.py
+   ```
+   To override the details URL or specify a deck ID:
+   ```bash
+   python export_ucalgary_anki.py --deck <ID>
+   ```
 
-UC_EMAIL=your_ucalgary_email@example.com
-UC_PW=your_uc_password
-UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>?bag_id=<BAG_ID>
+---
 
-# (optional) UC_BAG_ID=<bag_id_if_not_in_URL>
+### Windows (PowerShell)
 
-5.  Run the converter:
-    • Using the details URL from your .env:
-
-python export_ucalgary_anki.py
-
-• Or specifying a deck ID directly:
-
-python export_ucalgary_anki.py --deck 335
-
-⸻
-
-Windows (PowerShell)
-
+```powershell
 git clone <repo_url> ; cd anki_converter
 
 # Create & activate venv
-
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 
 # Install dependencies
-
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# Configure credentials (same .env file in project root)
+# Configure credentials (same .env file)
+# Run (uses UC_BASE_URL from .env)
+python export_ucalgary_anki.py
 
-# Run
-
-python export_ucalgary_anki.py --deck 335
-
-⸻
-
-Command-line flags
-• --deck <ID>
-Deck ID to process (overrides .env details URL).
-• --username <email>
-Override UC_EMAIL in .env.
-• --password <pw>
-Override UC_PW in .env.
-• --base-url <URL>
-Override UC_BASE_URL (can be just the host or the full details URL).
-• --out-prefix <prefix>
-Prefix for output files (.json, .csv, .apkg). Defaults to output.
-
-⸻
-
-What to Expect
-• Startup logs:
-
-Script started
-Loading screen...
-Logging in...
-Logged in successfully
-
-• Progress bar: Live “Scraping cards” counter via tqdm
-• Result:
-
-Creates a folder Deck*<ID>, containing Deck*<ID>.apkg.
-
-⸻
-
-Troubleshooting
-• Module not found?
-
-pip install -r requirements.txt
-
-• ChromeDriver mismatch?
-
-Download the matching version from https://sites.google.com/chromium.org/driver/
-• Hidden browser issues?
-Edit export_ucalgary_anki.py and comment out:
-
-opts.add_argument("--headless")
-
-to watch the browser run.
-
-⸻
-
-Enjoy converting your UofC Cards to Anki! Feel free to open an issue for questions or feature requests.
-
+# To override or specify a deck ID:
+python export_ucalgary_anki.py --deck <ID>
 ```
 
-```
+---
+
+## Command-line Flags
+
+- `--deck <ID>`  
+  Optional override: process by deck ID instead of using `UC_BASE_URL` from `.env`.
+- `--username <email>`  
+  Override `UC_EMAIL` in `.env`.
+- `--password <pw>`  
+  Override `UC_PW` in `.env`.
+- `--base-url <URL>`  
+  Override `UC_BASE_URL`.
+- `--out-prefix <prefix>`  
+  Prefix for output files (`.json`, `.csv`, `.apkg`). Defaults to `output`.
+
+---
+
+## What to Expect
+
+- **Startup logs:**
+  ```
+  Script started
+  Loading screen...
+  Logging in...
+  Logged in successfully
+  ```
+- **Progress bar:** Live “Scraping cards” via `tqdm`.
+- **Output:**  
+  Creates `Deck_<ID>/Deck_<ID>.apkg`.
+
+---
+
+## Troubleshooting
+
+- **Module not found?**
+  ```bash
+  pip install -r requirements.txt
+  ```
+- **ChromeDriver mismatch?**  
+  Download from https://sites.google.com/chromium.org/driver/
+- **Hidden browser issues?**  
+  Comment out `opts.add_argument("--headless")` in `export_ucalgary_anki.py`.
+
+---
+
+Enjoy converting your UofC Cards to Anki! Open an issue for questions or feature requests.
