@@ -15,6 +15,7 @@ from selenium.common.exceptions import NoSuchElementException
 
 import genanki
 import logging
+import re
 
 from urllib.parse import urlparse, parse_qs
 
@@ -85,95 +86,190 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
     # opts.add_argument("--headless")
     opts.add_argument("--no-sandbox")
     opts.add_argument("--disable-dev-shm-usage")
+    opts.add_argument("--kiosk-printing")
+    opts.add_experimental_option(
+        "prefs",
+        {
+            "printing.print_preview_sticky_settings.appState": '{"recentDestinations":[],"selectedDestinationId":"Save as PDF","version":2}'
+        },
+    )
     driver = webdriver.Chrome(options=opts)
+    # Prevent the print dialog by overriding window.print before any page loads
+    driver.execute_cdp_cmd(
+        "Page.addScriptToEvaluateOnNewDocument", {"source": "window.print = () => {};"}
+    )
 
     try:
         # 1) LOGIN
         selenium_login(driver, email, password, base_host)
 
-        # 2) GO TO DECK PAGE
+        # If a details URL is provided, extract all card IDs via the patient rel redirect
         if details_url:
-            deck_url = details_url
-        else:
-            deck_url = f"{base_host}/details/{deck_id}?bag_id={bag_id}"
-        logger.debug(f"[deck] GET {deck_url}")
-        driver.get(deck_url)
-        time.sleep(2)
-        logger.debug(f"[deck] title={driver.title!r}")
-
-        if "Error 403" in driver.title:
-            logger.error("Deck page returned 403 Forbidden: %s", driver.current_url)
-            driver.save_screenshot("deck_error_403.png")
-            sys.exit("403 Forbidden on deck page; check credentials and bag_id")
-
-        # 3) PULL CARD IDs
-        card_elements = driver.find_elements(By.CSS_SELECTOR, "div.patient[rel]")
-        logger.debug("Found %d card elements: %r", len(card_elements), card_elements)
-        if not card_elements:
-            logger.error(
-                "No cards found. Verify your CSS selector 'div.patient[rel]' matches the page."
-            )
-            sys.exit("No cards to export; check selectors or login status.")
-
-        card_ids = [el.get_attribute("rel") for el in card_elements]
-        logger.debug(f"→ Found {len(card_ids)} cards: {card_ids}")
-
-        cards = []
-        for cid in card_ids:
-            card_url = f"{base_host}/card/{cid}?bag_id={bag_id}"
-            logger.debug(f"[card] GET {card_url}")
-            driver.get(card_url)
+            logger.debug(f"[details] GET {details_url}")
+            driver.get(details_url)
             time.sleep(2)
-            logger.debug(f"[card] title={driver.title!r}")
+            # Find all patient elements with a rel attribute
+            patient_elems = driver.find_elements(By.CSS_SELECTOR, ".patient[rel]")
+            logger.debug(
+                "Found %d patient elements on details page", len(patient_elems)
+            )
+            cards = []
+            for pe in patient_elems:
+                rel = pe.get_attribute("rel")
+                patient_url = f"{base_host}/patient/{rel}?bag_id={bag_id}"
+                logger.debug(f"[patient] GET {patient_url}")
+                driver.get(patient_url)
+                time.sleep(2)
+                # Selenium follows the redirect; grab the final card URL
+                card_page_url = driver.current_url
+                logger.debug("Redirected to card URL=%r", card_page_url)
+                m = re.search(r"/card/(\\d+)", card_page_url)
+                if not m:
+                    logger.error("Could not parse card ID from URL %s", card_page_url)
+                    continue
+                cid = m.group(1)
 
-            # background parts (two different table-layouts)
-            bg_selectors = [
-                "body > div > div.container.card > div:nth-child(2) > table > tbody > tr > td",
-                "body > div > div.container.card > div:nth-child(3) > div > div > div > table > tbody > tr > td",
-            ]
-            background_parts = []
-            for sel in bg_selectors:
-                elems = driver.find_elements(By.CSS_SELECTOR, sel)
-                logger.debug(f"  bg [{sel!r}] → {len(elems)} elems")
-                for el in elems:
-                    txt = el.text.strip()
-                    if txt:
-                        background_parts.append(txt)
-            background = "\n\n".join(background_parts).strip()
-            logger.debug(f"  background → {background!r}")
+                # Now scrape the card page just like before
+                # background parts (two different table-layouts)
+                bg_selectors = [
+                    "body > div > div.container.card > div:nth-child(2) > table > tbody > tr > td",
+                    "body > div > div.container.card > div:nth-child(3) > div > div > div > table > tbody > tr > td",
+                ]
+                background_parts = []
+                for sel in bg_selectors:
+                    elems = driver.find_elements(By.CSS_SELECTOR, sel)
+                    for el in elems:
+                        txt = el.text.strip()
+                        if txt:
+                            background_parts.append(txt)
+                background = "\n\n".join(background_parts).strip()
 
-            # question
-            try:
-                qel = driver.find_element(
+                # question
+                try:
+                    qel = driver.find_element(
+                        By.CSS_SELECTOR,
+                        "#workspace > div.solution.container > form > h3",
+                    )
+                    question = qel.text.strip()
+                except NoSuchElementException:
+                    question = "[No Question]"
+
+                # options
+                opts_elems = driver.find_elements(
                     By.CSS_SELECTOR,
-                    "#workspace > div.solution.container > form > h3",
+                    "#workspace > div.solution.container > form > div.options > div.option > label",
                 )
-                question = qel.text.strip()
-            except NoSuchElementException:
-                question = "[No Question]"
-            logger.debug(f"  question → {question!r}")
+                options = [o.text.strip() for o in opts_elems if o.text.strip()]
 
-            # options
-            opts_elems = driver.find_elements(
-                By.CSS_SELECTOR,
-                "#workspace > div.solution.container > form > div.options > div.option > label",
-            )
-            options = [o.text.strip() for o in opts_elems if o.text.strip()]
-            logger.debug(f"  options → {options}")
+                full_q = (
+                    f"{background}\n\n<b>{question}</b>" if background else question
+                )
+                answer = "\n".join(f"- {o}" for o in options)
+                cards.append(
+                    {
+                        "id": cid,
+                        "question": full_q,
+                        "answer": answer,
+                        "tags": [],
+                        "images": [],
+                    }
+                )
+            return cards
+        else:
+            # Single deck ID provided directly
+            deck_ids = [deck_id]
 
-            full_q = f"{background}\n\n<b>{question}</b>" if background else question
-            answer = "\n".join(f"- {o}" for o in options)
-            cards.append(
-                {
-                    "id": cid,
-                    "question": full_q,
-                    "answer": answer,
-                    "tags": [],
-                    "images": [],
-                }
-            )
+            # 3) COLLECT CARD IDs FROM THE SINGLE DECK
+            card_ids = []
+            for did in deck_ids:
+                sub_deck_url = f"{base_host}/deck/{did}"
+                logger.debug(f"[sub-deck] GET {sub_deck_url}")
+                driver.get(sub_deck_url)
+                time.sleep(2)
+                logger.debug(f"[sub-deck] title={driver.title!r}")
+                if "Error 403" in driver.title:
+                    logger.error("Sub-deck page 403 Forbidden: %s", driver.current_url)
+                    driver.save_screenshot(f"deck_{did}_403.png")
+                    continue
+                link_elements = driver.find_elements(
+                    By.CSS_SELECTOR, "a[href*='/card/']"
+                )
+                logger.debug(
+                    "Found %d card link elements on deck %s: %r",
+                    len(link_elements),
+                    did,
+                    link_elements,
+                )
+                for link in link_elements:
+                    href = link.get_attribute("href")
+                    m = re.search(r"/card/(\\d+)", href)
+                    if m:
+                        cid = m.group(1)
+                        if cid not in card_ids:
+                            card_ids.append(cid)
+            logger.debug("→ Total unique card IDs: %r", card_ids)
+            if not card_ids:
+                logger.error("No card links found in any sub-deck.")
+                sys.exit("No cards to export; check selectors or page structure.")
 
-        return cards
+            cards = []
+            for cid in card_ids:
+                # Build card URL without bag_id parameter to avoid 403 errors on card pages
+                card_url = f"{base_host}/card/{cid}"
+                logger.debug(f"[card] GET {card_url}")
+                driver.get(card_url)
+                time.sleep(2)
+                logger.debug(f"[card] title={driver.title!r}")
+
+                # background parts (two different table-layouts)
+                bg_selectors = [
+                    "body > div > div.container.card > div:nth-child(2) > table > tbody > tr > td",
+                    "body > div > div.container.card > div:nth-child(3) > div > div > div > table > tbody > tr > td",
+                ]
+                background_parts = []
+                for sel in bg_selectors:
+                    elems = driver.find_elements(By.CSS_SELECTOR, sel)
+                    logger.debug(f"  bg [{sel!r}] → {len(elems)} elems")
+                    for el in elems:
+                        txt = el.text.strip()
+                        if txt:
+                            background_parts.append(txt)
+                background = "\n\n".join(background_parts).strip()
+                logger.debug(f"  background → {background!r}")
+
+                # question
+                try:
+                    qel = driver.find_element(
+                        By.CSS_SELECTOR,
+                        "#workspace > div.solution.container > form > h3",
+                    )
+                    question = qel.text.strip()
+                except NoSuchElementException:
+                    question = "[No Question]"
+                logger.debug(f"  question → {question!r}")
+
+                # options
+                opts_elems = driver.find_elements(
+                    By.CSS_SELECTOR,
+                    "#workspace > div.solution.container > form > div.options > div.option > label",
+                )
+                options = [o.text.strip() for o in opts_elems if o.text.strip()]
+                logger.debug(f"  options → {options}")
+
+                full_q = (
+                    f"{background}\n\n<b>{question}</b>" if background else question
+                )
+                answer = "\n".join(f"- {o}" for o in options)
+                cards.append(
+                    {
+                        "id": cid,
+                        "question": full_q,
+                        "answer": answer,
+                        "tags": [],
+                        "images": [],
+                    }
+                )
+            return cards
 
     finally:
         driver.quit()
