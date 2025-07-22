@@ -383,42 +383,20 @@ def export_csv(data, path):
 
 
 def export_apkg(data, deck_name, path):
-    # Extended MCQ model: fields for background, question, choices, correct index
+    # Simplified MCQ model: only Front, CorrectAnswer, Multi
     mcq_model = genanki.Model(
         MODEL_ID,
         "MCQ Q&A",
         fields=[
-            {"name": "Background"},
-            {"name": "Question"},
-            {"name": "Choice1"},
-            {"name": "Choice2"},
-            {"name": "Choice3"},
-            {"name": "Choice4"},
+            {"name": "Front"},
             {"name": "CorrectAnswer"},
             {"name": "Multi"},
         ],
         templates=[
             {
                 "name": "Card 1",
-                "qfmt": """
-{{Background}}<br><br>
-<b>{{Question}}</b>
-<ul>
-  {{#Choice1}}<li><label><input type="{{#Multi}}checkbox{{/Multi}}{{^Multi}}radio{{/Multi}}" name="choice">{{Choice1}}</label></li>{{/Choice1}}
-  {{#Choice2}}<li><label><input type="{{#Multi}}checkbox{{/Multi}}{{^Multi}}radio{{/Multi}}" name="choice">{{Choice2}}</label></li>{{/Choice2}}
-  {{#Choice3}}<li><label><input type="{{#Multi}}checkbox{{/Multi}}{{^Multi}}radio{{/Multi}}" name="choice">{{Choice3}}</label></li>{{/Choice3}}
-  {{#Choice4}}<li><label><input type="{{#Multi}}checkbox{{/Multi}}{{^Multi}}radio{{/Multi}}" name="choice">{{Choice4}}</label></li>{{/Choice4}}
-</ul>
-""",
-                "afmt": """
-{{FrontSide}}<hr id=answer>
-<b>Choices:</b>
-<ul id="choices-list">
-  {{#Choice1}}<li>{{Choice1}}</li>{{/Choice1}}
-  {{#Choice2}}<li>{{Choice2}}</li>{{/Choice2}}
-  {{#Choice3}}<li>{{Choice3}}</li>{{/Choice3}}
-  {{#Choice4}}<li>{{Choice4}}</li>{{/Choice4}}
-</ul>
+                "qfmt": "{{Front}}",
+                "afmt": """{{Front}}
 <script>
 // Color correct answers green, others red (supports multiple answers)
 var ansfield = "{{CorrectAnswer}}";
@@ -452,55 +430,12 @@ if (ul && ansList.length) {
         multi_flag = c.get("multi", False)
         multi = "1" if multi_flag else ""
         logger.debug(f"Card {c['id']} multi-select flag={multi_flag}")
-        # You now need to split out background, question, choices, and correct answer index
-        background = ""
-        question = c["question"]
-        choices = []
-        correct_idx = 1
-        # Split the full question into background, question, choices
-        if "\n\n" in question:
-            parts = question.split("\n\n", 2)
-            if len(parts) == 3:
-                background, question_text, choices_text = parts
-            elif len(parts) == 2:
-                background = ""
-                question_text, choices_text = parts
-            else:
-                background = ""
-                question_text = question
-                choices_text = ""
-        else:
-            background = ""
-            question_text = question
-            choices_text = ""
-        # Parse choices
-        for line in choices_text.split("\n"):
-            if line.strip() and "." in line:
-                # Remove the number
-                opt = line.split(".", 1)[1].strip()
-                choices.append(opt)
-        # Map correct answer to index
-        correct_idx = 0
-        for i, opt in enumerate(choices):
-            if opt == c["answer"]:
-                correct_idx = i + 1  # Anki models often start from 1
-                break
-        logger.debug(
-            f"Mapped fields for card {c['id']}: background={background!r}, question_text={question_text!r}, choices={choices}, correct_idx={correct_idx}, multi={multi!r}"
-        )
-        # Pad choices up to 4 (or leave blank)
-        while len(choices) < 4:
-            choices.append("")
+        # No splitting or padding: use question HTML as Front, answer, and multi flag only
         deck.add_note(
             genanki.Note(
                 model=mcq_model,
                 fields=[
-                    background,
-                    question_text,
-                    choices[0],
-                    choices[1],
-                    choices[2],
-                    choices[3],
+                    c["question"],
                     c["answer"],
                     multi,
                 ],
