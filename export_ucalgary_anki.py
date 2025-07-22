@@ -183,11 +183,15 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                     ("timer", "2")
                 ]
                 resp = sess.post(sol_url, data=payload)
-                correct_ids = []
+                json_resp = {}
                 try:
-                    correct_ids = resp.json().get("answers", [])
+                    json_resp = resp.json()
                 except Exception:
-                    logger.warning("Could not parse solution response for card %s", cid)
+                    logger.warning(
+                        "Could not parse JSON from solution response for card %s", cid
+                    )
+                correct_ids = json_resp.get("answers", [])
+                feedback = json_resp.get("feedback", "").strip()
                 # Build options and correct_answers lists by matching IDs
                 options = [text for oid, text in option_info]
                 correct_answers = [
@@ -216,6 +220,7 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                         "id": cid,
                         "question": full_q,
                         "answer": answer,
+                        "explanation": feedback,
                         "tags": [],
                         "images": [],
                         "multi": multi_flag,
@@ -323,11 +328,15 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                     ("timer", "2")
                 ]
                 resp = sess.post(sol_url, data=payload)
-                correct_ids = []
+                json_resp = {}
                 try:
-                    correct_ids = resp.json().get("answers", [])
+                    json_resp = resp.json()
                 except Exception:
-                    logger.warning("Could not parse solution response for card %s", cid)
+                    logger.warning(
+                        "Could not parse JSON from solution response for card %s", cid
+                    )
+                correct_ids = json_resp.get("answers", [])
+                feedback = json_resp.get("feedback", "").strip()
                 # Build options and correct_answers lists by matching IDs
                 options = [text for oid, text in option_info]
                 correct_answers = [
@@ -356,6 +365,7 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                         "id": cid,
                         "question": full_q,
                         "answer": answer,
+                        "explanation": feedback,
                         "tags": [],
                         "images": [],
                         "multi": multi_flag,
@@ -383,13 +393,14 @@ def export_csv(data, path):
 
 
 def export_apkg(data, deck_name, path):
-    # Simplified MCQ model: only Front, CorrectAnswer, Multi
+    # Simplified MCQ model: Front, CorrectAnswer, Explanation, Multi
     mcq_model = genanki.Model(
         MODEL_ID,
         "MCQ Q&A",
         fields=[
             {"name": "Front"},
             {"name": "CorrectAnswer"},
+            {"name": "Explanation"},
             {"name": "Multi"},
         ],
         templates=[
@@ -417,6 +428,8 @@ if (ul && ansList.length) {
 }
 </script>
 <b>Correct answer(s):</b> {{CorrectAnswer}}
+<hr/>
+<b>Explanation:</b> {{Explanation}}
 """,
             }
         ],
@@ -430,13 +443,14 @@ if (ul && ansList.length) {
         multi_flag = c.get("multi", False)
         multi = "1" if multi_flag else ""
         logger.debug(f"Card {c['id']} multi-select flag={multi_flag}")
-        # No splitting or padding: use question HTML as Front, answer, and multi flag only
+        # Use question HTML as Front, answer, explanation, and multi flag
         deck.add_note(
             genanki.Note(
                 model=mcq_model,
                 fields=[
                     c["question"],
                     c["answer"],
+                    c.get("explanation", ""),
                     multi,
                 ],
                 tags=c.get("tags", []),
