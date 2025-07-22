@@ -21,17 +21,21 @@ Converts UofC Cards into an Anki `.apkg` deck using Selenium + Genanki.
    ```bash
    git clone <repo_url> && cd anki_converter
 
-   2.	Make the setup script executable and run it:
    ```
+
+2. Make the setup script executable and run it:
+
+```
 
 chmod +x setup.sh
 ./setup.sh
+```
 
-    3.	Activate the virtual environment:
+3.  Activate the virtual environment:
 
 source .venv/bin/activate
 
-    4.	Configure your credentials:
+4.  Configure your credentials:
 
 Create a file named .env in the project root with these entries:
 
@@ -41,12 +45,12 @@ UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>?bag_id=<BAG_ID>
 
 # (optional) UC_BAG_ID=<bag_id_if_not_in_URL>
 
-    5.	Run the converter:
-    •	Using the details URL from your .env:
+5.  Run the converter:
+    • Using the details URL from your .env:
 
 python export_ucalgary_anki.py
 
-    •	Or specifying a deck ID directly:
+• Or specifying a deck ID directly:
 
 python export_ucalgary_anki.py --deck 335
 
@@ -96,8 +100,8 @@ Loading screen...
 Logging in...
 Logged in successfully
 
-    •	Progress bar: Live “Scraping cards” counter via tqdm
-    •	Result:
+• Progress bar: Live “Scraping cards” counter via tqdm
+• Result:
 
 Creates a folder Deck*<ID>, containing Deck*<ID>.apkg.
 
@@ -108,7 +112,7 @@ Troubleshooting
 
 pip install -r requirements.txt
 
-    •	ChromeDriver mismatch?
+• ChromeDriver mismatch?
 
 Download the matching version from https://sites.google.com/chromium.org/driver/
 • Hidden browser issues?
@@ -121,3 +125,7 @@ to watch the browser run.
 ⸻
 
 Enjoy converting your UofC Cards to Anki! Feel free to open an issue for questions or feature requests.
+
+```
+
+```
