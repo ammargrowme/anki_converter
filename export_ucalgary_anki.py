@@ -110,12 +110,11 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
             time.sleep(2)
             # Find all patient elements with a rel attribute
             patient_elems = driver.find_elements(By.CSS_SELECTOR, ".patient[rel]")
-            logger.debug(
-                "Found %d patient elements on details page", len(patient_elems)
-            )
+            # Extract rel attributes before navigation to avoid stale element references
+            rels = [pe.get_attribute("rel") for pe in patient_elems]
+            logger.debug("Found %d patient elements on details page", len(rels))
             cards = []
-            for pe in patient_elems:
-                rel = pe.get_attribute("rel")
+            for rel in rels:
                 patient_url = f"{base_host}/patient/{rel}?bag_id={bag_id}"
                 logger.debug(f"[patient] GET {patient_url}")
                 driver.get(patient_url)
@@ -123,7 +122,7 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                 # Selenium follows the redirect; grab the final card URL
                 card_page_url = driver.current_url
                 logger.debug("Redirected to card URL=%r", card_page_url)
-                m = re.search(r"/card/(\\d+)", card_page_url)
+                m = re.search(r"/card/(\d+)", card_page_url)
                 if not m:
                     logger.error("Could not parse card ID from URL %s", card_page_url)
                     continue
@@ -202,7 +201,7 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                 )
                 for link in link_elements:
                     href = link.get_attribute("href")
-                    m = re.search(r"/card/(\\d+)", href)
+                    m = re.search(r"/card/(\d+)", href)
                     if m:
                         cid = m.group(1)
                         if cid not in card_ids:
