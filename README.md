@@ -1,5 +1,9 @@
 # anki_converter
 
+**Repository:** https://github.com/ammargrowme/anki_converter.git
+
+[![GitHub Repo stars](https://img.shields.io/github/stars/ammargrowme/anki_converter)](https://github.com/ammargrowme/anki_converter)
+
 Converts UofC Cards into an Anki `.apkg` deck using Selenium + Genanki.
 
 ---
@@ -41,7 +45,7 @@ brew install --cask google-chrome chromedriver
 Clone the repository and set up a Python virtual environment with dependencies.
 
 ```bash
-git clone <repo_url> && cd anki_converter
+git clone https://github.com/ammargrowme/anki_converter.git && cd anki_converter
 chmod +x setup.sh
 ./setup.sh
 ```
@@ -56,7 +60,7 @@ Install required tools and set up the virtual environment using PowerShell comma
 # Git
 # Python 3 (Add to PATH)
 # Chrome & ChromeDriver (add to PATH)
-git clone <repo_url> ; cd anki_converter
+git clone https://github.com/ammargrowme/anki_converter.git ; cd anki_converter
 python -m venv .venv
 .\\.venv\\Scripts\\Activate.ps1
 pip install --upgrade pip
