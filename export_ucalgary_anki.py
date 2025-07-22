@@ -14,6 +14,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoSuchElementException
 
 import genanki
+import requests
 import logging
 import re
 
@@ -150,33 +151,54 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                 except NoSuchElementException:
                     question = "[No Question]"
 
-                # Scrape options and detect the correct answer
-                opts_elems = driver.find_elements(
+                # Determine if multi-select (pickmany) by form attribute
+                try:
+                    form = driver.find_element(
+                        By.CSS_SELECTOR, "#workspace > div.solution.container > form"
+                    )
+                    multi_flag = form.get_attribute("rel") == "pickmany"
+                except Exception:
+                    multi_flag = False
+
+                # Scrape options and fetch correct answers via API
+                option_divs = driver.find_elements(
                     By.CSS_SELECTOR,
-                    "#workspace > div.solution.container > form > div.options > div.option > label",
+                    "#workspace > div.solution.container > form > div.options > div.option",
                 )
-                options = []
-                correct_answer = None
-                for idx, label in enumerate(opts_elems):
-                    text = label.text.strip()
-                    if not text:
-                        continue
-                    options.append(text)
-                    try:
-                        inp = label.find_element(
-                            By.XPATH, "preceding-sibling::input[@type='radio']"
-                        )
-                        if (
-                            inp.get_attribute("checked") in ("true", "checked")
-                            or inp.get_attribute("aria-checked") == "true"
-                        ):
-                            correct_answer = text
-                    except NoSuchElementException:
-                        pass
-
-                if correct_answer is None and options:
-                    correct_answer = options[0]
-
+                # Extract IDs and texts
+                option_info = []
+                for div in option_divs:
+                    inp = div.find_element(By.TAG_NAME, "input")
+                    opt_id = inp.get_attribute("value")
+                    label = div.find_element(By.TAG_NAME, "label")
+                    opt_text = label.text.strip()
+                    option_info.append((opt_id, opt_text))
+                # Prepare session with Selenium cookies
+                sess = requests.Session()
+                for c in driver.get_cookies():
+                    sess.cookies.set(c["name"], c["value"])
+                # Call solution endpoint to get correct answer IDs
+                sol_url = f"{base_host}/solution/{cid}/"
+                payload = [("guess[]", oid) for oid, _ in option_info] + [
+                    ("timer", "2")
+                ]
+                resp = sess.post(sol_url, data=payload)
+                correct_ids = []
+                try:
+                    correct_ids = resp.json().get("answers", [])
+                except Exception:
+                    logger.warning("Could not parse solution response for card %s", cid)
+                # Build options and correct_answers lists by matching IDs
+                options = [text for oid, text in option_info]
+                correct_answers = [
+                    text for oid, text in option_info if oid in correct_ids
+                ]
+                if not correct_answers and options:
+                    correct_answers = [options[0]]
+                logger.debug(
+                    f"Scraped card {cid}: options={options}, correct_ids={correct_ids}, correct_answers={correct_answers}"
+                )
+                # Format choices for front
                 formatted_opts = "\n".join(
                     f"{i+1}. {opt}" for i, opt in enumerate(options)
                 )
@@ -184,8 +206,11 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                     full_q = f"{background}\n\n<b>{question}</b>\n\n{formatted_opts}"
                 else:
                     full_q = f"{question}\n\n{formatted_opts}"
-
-                answer = correct_answer or "[No Answer Found]"
+                answer = (
+                    ", ".join(correct_answers)
+                    if correct_answers
+                    else "[No Answer Found]"
+                )
                 cards.append(
                     {
                         "id": cid,
@@ -193,6 +218,7 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                         "answer": answer,
                         "tags": [],
                         "images": [],
+                        "multi": multi_flag,
                     }
                 )
             return cards
@@ -265,33 +291,54 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                     question = "[No Question]"
                 logger.debug(f"  question → {question!r}")
 
-                # Scrape options and detect the correct answer
-                opts_elems = driver.find_elements(
+                # Determine if multi-select (pickmany) by form attribute
+                try:
+                    form = driver.find_element(
+                        By.CSS_SELECTOR, "#workspace > div.solution.container > form"
+                    )
+                    multi_flag = form.get_attribute("rel") == "pickmany"
+                except Exception:
+                    multi_flag = False
+
+                # Scrape options and fetch correct answers via API
+                option_divs = driver.find_elements(
                     By.CSS_SELECTOR,
-                    "#workspace > div.solution.container > form > div.options > div.option > label",
+                    "#workspace > div.solution.container > form > div.options > div.option",
                 )
-                options = []
-                correct_answer = None
-                for idx, label in enumerate(opts_elems):
-                    text = label.text.strip()
-                    if not text:
-                        continue
-                    options.append(text)
-                    try:
-                        inp = label.find_element(
-                            By.XPATH, "preceding-sibling::input[@type='radio']"
-                        )
-                        if (
-                            inp.get_attribute("checked") in ("true", "checked")
-                            or inp.get_attribute("aria-checked") == "true"
-                        ):
-                            correct_answer = text
-                    except NoSuchElementException:
-                        pass
-
-                if correct_answer is None and options:
-                    correct_answer = options[0]
-
+                # Extract IDs and texts
+                option_info = []
+                for div in option_divs:
+                    inp = div.find_element(By.TAG_NAME, "input")
+                    opt_id = inp.get_attribute("value")
+                    label = div.find_element(By.TAG_NAME, "label")
+                    opt_text = label.text.strip()
+                    option_info.append((opt_id, opt_text))
+                # Prepare session with Selenium cookies
+                sess = requests.Session()
+                for c in driver.get_cookies():
+                    sess.cookies.set(c["name"], c["value"])
+                # Call solution endpoint to get correct answer IDs
+                sol_url = f"{base_host}/solution/{cid}/"
+                payload = [("guess[]", oid) for oid, _ in option_info] + [
+                    ("timer", "2")
+                ]
+                resp = sess.post(sol_url, data=payload)
+                correct_ids = []
+                try:
+                    correct_ids = resp.json().get("answers", [])
+                except Exception:
+                    logger.warning("Could not parse solution response for card %s", cid)
+                # Build options and correct_answers lists by matching IDs
+                options = [text for oid, text in option_info]
+                correct_answers = [
+                    text for oid, text in option_info if oid in correct_ids
+                ]
+                if not correct_answers and options:
+                    correct_answers = [options[0]]
+                logger.debug(
+                    f"Scraped card {cid}: options={options}, correct_ids={correct_ids}, correct_answers={correct_answers}"
+                )
+                # Format choices for front
                 formatted_opts = "\n".join(
                     f"{i+1}. {opt}" for i, opt in enumerate(options)
                 )
@@ -299,8 +346,11 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                     full_q = f"{background}\n\n<b>{question}</b>\n\n{formatted_opts}"
                 else:
                     full_q = f"{question}\n\n{formatted_opts}"
-
-                answer = correct_answer or "[No Answer Found]"
+                answer = (
+                    ", ".join(correct_answers)
+                    if correct_answers
+                    else "[No Answer Found]"
+                )
                 cards.append(
                     {
                         "id": cid,
@@ -308,6 +358,7 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                         "answer": answer,
                         "tags": [],
                         "images": [],
+                        "multi": multi_flag,
                     }
                 )
             return cards
@@ -344,6 +395,7 @@ def export_apkg(data, deck_name, path):
             {"name": "Choice3"},
             {"name": "Choice4"},
             {"name": "CorrectAnswer"},
+            {"name": "Multi"},
         ],
         templates=[
             {
@@ -352,21 +404,54 @@ def export_apkg(data, deck_name, path):
 {{Background}}<br><br>
 <b>{{Question}}</b>
 <ul>
-  {{#Choice1}}<li><label><input type="radio" name="choice">{{Choice1}}</label></li>{{/Choice1}}
-  {{#Choice2}}<li><label><input type="radio" name="choice">{{Choice2}}</label></li>{{/Choice2}}
-  {{#Choice3}}<li><label><input type="radio" name="choice">{{Choice3}}</label></li>{{/Choice3}}
-  {{#Choice4}}<li><label><input type="radio" name="choice">{{Choice4}}</label></li>{{/Choice4}}
+  {{#Choice1}}<li><label><input type="{{#Multi}}checkbox{{/Multi}}{{^Multi}}radio{{/Multi}}" name="choice">{{Choice1}}</label></li>{{/Choice1}}
+  {{#Choice2}}<li><label><input type="{{#Multi}}checkbox{{/Multi}}{{^Multi}}radio{{/Multi}}" name="choice">{{Choice2}}</label></li>{{/Choice2}}
+  {{#Choice3}}<li><label><input type="{{#Multi}}checkbox{{/Multi}}{{^Multi}}radio{{/Multi}}" name="choice">{{Choice3}}</label></li>{{/Choice3}}
+  {{#Choice4}}<li><label><input type="{{#Multi}}checkbox{{/Multi}}{{^Multi}}radio{{/Multi}}" name="choice">{{Choice4}}</label></li>{{/Choice4}}
 </ul>
 """,
                 "afmt": """
 {{FrontSide}}<hr id=answer>
-<b>Answer:</b> {{CorrectAnswer}}
+<b>Choices:</b>
+<ul id="choices-list">
+  {{#Choice1}}<li>{{Choice1}}</li>{{/Choice1}}
+  {{#Choice2}}<li>{{Choice2}}</li>{{/Choice2}}
+  {{#Choice3}}<li>{{Choice3}}</li>{{/Choice3}}
+  {{#Choice4}}<li>{{Choice4}}</li>{{/Choice4}}
+</ul>
+<script>
+// Color correct answers green, others red (supports multiple answers)
+var ansfield = "{{CorrectAnswer}}";
+var ansList = ansfield.split(",").map(function(s) { return s.trim(); }).filter(Boolean);
+var ul = document.getElementById("choices-list");
+if (ul && ansList.length) {
+  for (var i = 0; i < ul.children.length; ++i) {
+    var li = ul.children[i];
+    var txt = li.innerText.trim();
+    if (!txt) continue;
+    if (ansList.includes(txt)) {
+      li.style.color = "green";
+      li.style.fontWeight = "bold";
+    } else {
+      li.style.color = "red";
+    }
+  }
+}
+</script>
+<b>Correct answer(s):</b> {{CorrectAnswer}}
 """,
             }
         ],
     )
     deck = genanki.Deck(DECK_ID_BASE, deck_name)
     for c in data:
+        logger.debug(
+            f"Preparing Anki note for card {c['id']}: raw question={c['question']}, raw answer={c['answer']}"
+        )
+        # determine if multiple answers are allowed
+        multi_flag = c.get("multi", False)
+        multi = "1" if multi_flag else ""
+        logger.debug(f"Card {c['id']} multi-select flag={multi_flag}")
         # You now need to split out background, question, choices, and correct answer index
         background = ""
         question = c["question"]
@@ -374,22 +459,20 @@ def export_apkg(data, deck_name, path):
         correct_idx = 1
         # Split the full question into background, question, choices
         if "\n\n" in question:
-            # Assume format: background\n\n<b>question</b>\n\n1. choice...
-            parts = question.split("\n\n")
+            parts = question.split("\n\n", 2)
             if len(parts) == 3:
-                background = parts[0]
-                question_text = parts[1]
-                choices_text = parts[2]
+                background, question_text, choices_text = parts
+            elif len(parts) == 2:
+                background = ""
+                question_text, choices_text = parts
             else:
                 background = ""
-                question_text = parts[0]
-                choices_text = parts[1]
+                question_text = question
+                choices_text = ""
         else:
             background = ""
             question_text = question
             choices_text = ""
-        # Remove <b> tags
-        question_text = question_text.replace("<b>", "").replace("</b>", "")
         # Parse choices
         for line in choices_text.split("\n"):
             if line.strip() and "." in line:
@@ -402,6 +485,9 @@ def export_apkg(data, deck_name, path):
             if opt == c["answer"]:
                 correct_idx = i + 1  # Anki models often start from 1
                 break
+        logger.debug(
+            f"Mapped fields for card {c['id']}: background={background!r}, question_text={question_text!r}, choices={choices}, correct_idx={correct_idx}, multi={multi!r}"
+        )
         # Pad choices up to 4 (or leave blank)
         while len(choices) < 4:
             choices.append("")
@@ -416,6 +502,7 @@ def export_apkg(data, deck_name, path):
                     choices[2],
                     choices[3],
                     c["answer"],
+                    multi,
                 ],
                 tags=c.get("tags", []),
             )
@@ -493,10 +580,12 @@ def main():
 
     cards = selenium_scrape_deck(deck_id, email, pw, host, bag_id, details_url)
     deck_name = f"Deck_{deck_id}"
+    os.makedirs(deck_name, exist_ok=True)
 
     # export_json(cards, f"{args.out_prefix}.json")
     # export_csv(cards, f"{args.out_prefix}.csv")
-    export_apkg(cards, deck_name, f"{args.out_prefix}.apkg")
+    output_path = os.path.join(deck_name, f"{deck_name}.apkg")
+    export_apkg(cards, deck_name, output_path)
 
 
 if __name__ == "__main__":
