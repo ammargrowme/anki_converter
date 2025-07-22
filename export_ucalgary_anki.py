@@ -467,7 +467,7 @@ if (ansList.length) {
 <hr/>
 <div id="sources"><b>Sources:</b>
   <ul>
-    {{#Sources}}<li>{{.}}</li>{{/Sources}}
+    {{{Sources}}}
   </ul>
 </div>
 {{/Sources}}
@@ -486,7 +486,9 @@ if (ansList.length) {
         multi_flag = c.get("multi", False)
         multi = "1" if multi_flag else ""
         logger.debug(f"Card {c['id']} multi-select flag={multi_flag}")
-        # Use question HTML as Front, answer, explanation, score_text, sources, and multi flag
+        # Build sources_html as HTML list items for the Sources field
+        sources_html = "".join(f"<li>{src}</li>" for src in c.get("sources", []))
+        # Use question HTML as Front, answer, explanation, score_text, sources (as HTML), and multi flag
         deck.add_note(
             genanki.Note(
                 model=mcq_model,
@@ -495,7 +497,7 @@ if (ansList.length) {
                     c["answer"],
                     c.get("explanation", ""),
                     c.get("score_text", ""),
-                    "\n".join(c.get("sources", [])),
+                    sources_html,
                     multi,
                 ],
                 tags=c.get("tags", []),
