@@ -12,4 +12,5 @@ pip install --upgrade pip
 pip install -r requirements.txt
 
 echo "✅ Virtualenv created and dependencies installed."
-echo "👉 To start:  source .venv/bin/activate"
+echo "👉 To start using the converter:"
+echo "   source .venv/bin/activate"

@@ -14,18 +14,12 @@ from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoSuchElementException
 
 import genanki
+from tqdm import tqdm
 import requests
-import logging
 import re
 
 from urllib.parse import urlparse, parse_qs
 
-# configure root logger
-logging.basicConfig(
-    level=logging.DEBUG,  # switch to INFO once happy
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
-logger = logging.getLogger(__name__)
 
 # Load .env for credentials and URLs
 load_dotenv()
@@ -55,10 +49,6 @@ else:
 # 3. fall back to deck_id at runtime
 BAG_ID_DEFAULT = ENV_BAG_ID or parsed_bag
 
-logger.debug(
-    f"CONFIG → BASE={BASE!r}, default_details_url={default_details_url!r}, "
-    f"bag_id_default={BAG_ID_DEFAULT!r}, UC_EMAIL={'***' if EMAIL else None}"
-)
 
 DECK_ID_BASE = 1607392319000
 MODEL_ID = 1607392319001
@@ -67,24 +57,21 @@ MODEL_ID = 1607392319001
 def selenium_login(driver, email, password, base_host):
     login_url = f"{base_host}/login"
     driver.get(login_url)
-    logger.debug(f"[login] GET {login_url}")
     time.sleep(2)
 
     driver.find_element(By.NAME, "username").send_keys(email)
     driver.find_element(By.NAME, "password").send_keys(password)
     driver.find_element(By.NAME, "password").send_keys(Keys.RETURN)
     time.sleep(3)
-    logger.debug("Post-login page title=%r", driver.title)
-    logger.debug("Cookies after login: %s", driver.get_cookies())
 
     if "Logout" not in driver.page_source:
         raise RuntimeError("Login failed – check credentials")
-    logger.debug("✅ Logged in")
 
 
 def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_url=None):
     opts = webdriver.ChromeOptions()
-    # opts.add_argument("--headless")
+    opts.add_argument("--headless")
+    opts.add_argument("--disable-gpu")
     opts.add_argument("--no-sandbox")
     opts.add_argument("--disable-dev-shm-usage")
     opts.add_argument("--kiosk-printing")
@@ -101,31 +88,29 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
     )
 
     try:
+        print("Loading screen...")
+        print("Logging in...")
         # 1) LOGIN
         selenium_login(driver, email, password, base_host)
+        print("Logged in successfully")
 
         # If a details URL is provided, extract all card IDs via the patient rel redirect
         if details_url:
-            logger.debug(f"[details] GET {details_url}")
             driver.get(details_url)
             time.sleep(2)
             # Find all patient elements with a rel attribute
             patient_elems = driver.find_elements(By.CSS_SELECTOR, ".patient[rel]")
             # Extract rel attributes before navigation to avoid stale element references
             rels = [pe.get_attribute("rel") for pe in patient_elems]
-            logger.debug("Found %d patient elements on details page", len(rels))
             cards = []
-            for rel in rels:
+            for rel in tqdm(rels, desc="Scraping cards"):
                 patient_url = f"{base_host}/patient/{rel}?bag_id={bag_id}"
-                logger.debug(f"[patient] GET {patient_url}")
                 driver.get(patient_url)
                 time.sleep(2)
                 # Selenium follows the redirect; grab the final card URL
                 card_page_url = driver.current_url
-                logger.debug("Redirected to card URL=%r", card_page_url)
                 m = re.search(r"/card/(\d+)", card_page_url)
                 if not m:
-                    logger.error("Could not parse card ID from URL %s", card_page_url)
                     continue
                 cid = m.group(1)
 
@@ -187,9 +172,7 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                 try:
                     json_resp = resp.json()
                 except Exception:
-                    logger.warning(
-                        "Could not parse JSON from solution response for card %s", cid
-                    )
+                    pass
                 correct_ids = json_resp.get("answers", [])
                 feedback = json_resp.get("feedback", "").strip()
                 score_text = json_resp.get("scoreText", "").strip()
@@ -203,9 +186,6 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                 ]
                 if not correct_answers and options:
                     correct_answers = [options[0]]
-                logger.debug(
-                    f"Scraped card {cid}: options={options}, correct_ids={correct_ids}, correct_answers={correct_answers}"
-                )
                 # Format choices for front
                 # Build clickable options HTML
                 input_type = "checkbox" if multi_flag else "radio"
@@ -255,22 +235,13 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
             card_ids = []
             for did in deck_ids:
                 sub_deck_url = f"{base_host}/deck/{did}"
-                logger.debug(f"[sub-deck] GET {sub_deck_url}")
                 driver.get(sub_deck_url)
                 time.sleep(2)
-                logger.debug(f"[sub-deck] title={driver.title!r}")
                 if "Error 403" in driver.title:
-                    logger.error("Sub-deck page 403 Forbidden: %s", driver.current_url)
                     driver.save_screenshot(f"deck_{did}_403.png")
                     continue
                 link_elements = driver.find_elements(
                     By.CSS_SELECTOR, "a[href*='/card/']"
-                )
-                logger.debug(
-                    "Found %d card link elements on deck %s: %r",
-                    len(link_elements),
-                    did,
-                    link_elements,
                 )
                 for link in link_elements:
                     href = link.get_attribute("href")
@@ -279,19 +250,15 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                         cid = m.group(1)
                         if cid not in card_ids:
                             card_ids.append(cid)
-            logger.debug("→ Total unique card IDs: %r", card_ids)
             if not card_ids:
-                logger.error("No card links found in any sub-deck.")
                 sys.exit("No cards to export; check selectors or page structure.")
 
             cards = []
-            for cid in card_ids:
+            for cid in tqdm(card_ids, desc="Scraping cards"):
                 # Build card URL without bag_id parameter to avoid 403 errors on card pages
                 card_url = f"{base_host}/card/{cid}"
-                logger.debug(f"[card] GET {card_url}")
                 driver.get(card_url)
                 time.sleep(2)
-                logger.debug(f"[card] title={driver.title!r}")
 
                 # background parts (paragraphs in card)
                 background_parts = []
@@ -303,7 +270,6 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                     if txt:
                         background_parts.append(txt)
                 background = "\n\n".join(background_parts).strip()
-                logger.debug(f"  background → {background!r}")
 
                 # question
                 try:
@@ -314,7 +280,6 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                     question = qel.text.strip()
                 except NoSuchElementException:
                     question = "[No Question]"
-                logger.debug(f"  question → {question!r}")
 
                 # Determine if multi-select (pickmany) by form attribute
                 try:
@@ -352,9 +317,7 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                 try:
                     json_resp = resp.json()
                 except Exception:
-                    logger.warning(
-                        "Could not parse JSON from solution response for card %s", cid
-                    )
+                    pass
                 correct_ids = json_resp.get("answers", [])
                 feedback = json_resp.get("feedback", "").strip()
                 score_text = json_resp.get("scoreText", "").strip()
@@ -368,9 +331,6 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                 ]
                 if not correct_answers and options:
                     correct_answers = [options[0]]
-                logger.debug(
-                    f"Scraped card {cid}: options={options}, correct_ids={correct_ids}, correct_answers={correct_answers}"
-                )
                 # Format choices for front
                 # Build clickable options HTML
                 input_type = "checkbox" if multi_flag else "radio"
@@ -550,13 +510,9 @@ hr#answer-divider { border: none; border-top: 1px solid #888; margin: 16px 0; }
     )
     deck = genanki.Deck(DECK_ID_BASE, deck_name)
     for c in data:
-        logger.debug(
-            f"Preparing Anki note for card {c['id']}: raw question={c['question']}, raw answer={c['answer']}"
-        )
         # determine if multiple answers are allowed
         multi_flag = c.get("multi", False)
         multi = "1" if multi_flag else ""
-        logger.debug(f"Card {c['id']} multi-select flag={multi_flag}")
         # Build sources_html as HTML list items for the Sources field
         sources_html = "".join(f"<li>{src}</li>" for src in c.get("sources", []))
         # Use question HTML as Front, answer, explanation, score_text, percent, sources (as HTML), multi flag, and CardId
@@ -607,6 +563,7 @@ def main():
     )
     args = p.parse_args()
 
+    print("Script started")
     email = args.username or EMAIL
     pw = args.password or PW
     if not email or not pw:
@@ -644,8 +601,6 @@ def main():
         p.error(
             "🔒 Missing deck ID – set UC_BASE_URL to a details URL in .env or pass --deck"
         )
-
-    logger.debug(f"RUN → host={host}, details_url={details_url!r}, bag_id={bag_id!r}")
 
     cards = selenium_scrape_deck(deck_id, email, pw, host, bag_id, details_url)
     deck_name = f"Deck_{deck_id}"
