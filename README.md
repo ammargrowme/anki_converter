@@ -277,6 +277,8 @@ When using command-line editors to modify files (e.g., `.env`), note:
 
 ## Full Setup Guides
 
+---
+
 ### macOS Full Setup
 
 Follow these steps from a clean system:
@@ -345,6 +347,8 @@ Make sure to save changes before exiting (Ctrl+O, Enter, Ctrl+X in nano).
 ```bash
 python export_ucalgary_anki.py
 ```
+
+---
 
 ### Ubuntu/Debian Linux Full Setup
 
@@ -420,6 +424,8 @@ Make sure to save changes before exiting (Ctrl+O, Enter, Ctrl+X in nano).
 python export_ucalgary_anki.py
 ```
 
+---
+
 ### Windows Full Setup
 
 Follow these steps from a clean Windows machine:
@@ -479,3 +485,5 @@ notepad .env
 ```powershell
 python export_ucalgary_anki.py
 ```
+
+---
