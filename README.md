@@ -4,7 +4,7 @@
 
 [![GitHub Repo stars](https://img.shields.io/github/stars/ammargrowme/anki_converter)](https://github.com/ammargrowme/anki_converter)
 
-Converts UofC Cards into an Anki `.apkg` deck using Selenium + Genanki.
+A command-line tool that logs into the University of Calgary Cards site, scrapes question-and-answer cards, and generates a ready-to-import Anki `.apkg` deck using Selenium and Genanki.
 
 ---
 
@@ -23,6 +23,10 @@ Converts UofC Cards into an Anki `.apkg` deck using Selenium + Genanki.
 6. [Troubleshooting](#troubleshooting)
    - [Common Issues](#common-issues)
 7. [Tips](#tips)
+8. [Full Setup Guides](#full-setup-guides)
+   - [macOS Full Setup](#macos-full-setup)
+   - [Ubuntu/Debian Linux Full Setup](#ubuntudebian-linux-full-setup)
+   - [Windows Full Setup](#windows-full-setup)
 
 ---
 
