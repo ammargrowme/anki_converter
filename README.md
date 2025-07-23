@@ -34,9 +34,11 @@ Install required system packages and set up the project environment across suppo
 
 Use Homebrew to install Git, Python 3, Google Chrome, and ChromeDriver for headless browsing.
 
+#### Install Homebrew & Dependencies
+
+<a id="install-homebrew--dependencies"></a>
+
 <details>
-<summary>Install Homebrew & Dependencies</summary>
-Use Homebrew to bootstrap essential tools and browser dependencies.
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -46,9 +48,11 @@ brew install --cask google-chrome chromedriver
 
 </details>
 
+#### Clone & Setup Virtualenv
+
+<a id="clone--setup-virtualenv"></a>
+
 <details>
-<summary>Clone & Setup Virtualenv</summary>
-Clone the repository and set up a Python virtual environment with dependencies.
 
 ```bash
 git clone https://github.com/ammargrowme/anki_converter.git && cd anki_converter
@@ -58,9 +62,11 @@ chmod +x setup.sh
 
 </details>
 
+#### Windows (PowerShell)
+
+<a id="windows-powershell"></a>
+
 <details>
-<summary>Windows (PowerShell)</summary>
-Install required tools and set up the virtual environment using PowerShell commands.
 
 ```powershell
 # Git
@@ -81,9 +87,11 @@ pip install -r requirements.txt
 
 Provide your University of Calgary credentials and the target cards URL so the script can authenticate and fetch your cards.
 
+#### Creating the .env file
+
+<a id="creating-the-env-file"></a>
+
 <details>
-<summary>Creating the .env file</summary>
-Define environment variables for secure authentication without exposing credentials in code.
 
 1. Open your terminal or command prompt.
 2. Change directory to the cloned repo folder:
@@ -117,9 +125,11 @@ UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>
 
 Run the converter script to scrape cards from UofC and generate an Anki deck.
 
+#### Run Converter
+
+<a id="run-converter"></a>
+
 <details>
-<summary>Run Converter</summary>
-Execute the script with default or custom options to export your cards.
 
 ```bash
 # Default:
