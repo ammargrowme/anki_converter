@@ -14,3 +14,10 @@ pip install -r requirements.txt
 echo "✅ Virtualenv created and dependencies installed."
 echo "👉 To start using the converter:"
 echo "   source .venv/bin/activate"
+
+# 4) Clear macOS Gatekeeper quarantine flags (macOS only)
+if command -v xattr >/dev/null 2>&1; then
+  echo "🔓 Clearing macOS Gatekeeper quarantine flags..."
+  xattr -dr com.apple.quarantine "$(pwd)"
+  echo "✅ Quarantine flags cleared."
+fi

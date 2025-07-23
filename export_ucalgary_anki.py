@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
 import os
+import os.path
 import json
 import csv
-import argparse
 import time
-from dotenv import load_dotenv
 import sys
+import getpass
+from dotenv import load_dotenv
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -19,6 +20,9 @@ import requests
 import re
 
 from urllib.parse import urlparse, parse_qs
+
+# Config file for storing credentials
+CONFIG_PATH = os.path.expanduser("~/.uc_anki_config.json")
 
 
 # Load .env for credentials and URLs
@@ -144,6 +148,58 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                     multi_flag = form.get_attribute("rel") == "pickmany"
                 except Exception:
                     multi_flag = False
+
+                # Detect free-text questions
+                try:
+                    freetext_elem = driver.find_element(
+                        By.CSS_SELECTOR, "div.freetext-answer"
+                    )
+                    freetext_html = freetext_elem.get_attribute("outerHTML")
+                    # Fetch provided answer via solution endpoint
+                    sess = requests.Session()
+                    for c in driver.get_cookies():
+                        sess.cookies.set(c["name"], c["value"])
+                    sol_resp = sess.post(
+                        f"{base_host}/solution/{cid}/",
+                        data=[("guess", ""), ("timer", "1")],
+                    )
+                    json_sol = {}
+                    try:
+                        json_sol = sol_resp.json()
+                    except Exception:
+                        pass
+                    answer = json_sol.get("feedback", "").strip()
+                    # Build front HTML including the textarea element
+                    if background:
+                        full_q = (
+                            f'<div class="background">{background}</div>'
+                            f'<div class="question"><b>{question}</b></div>'
+                            f"{freetext_html}"
+                        )
+                    else:
+                        full_q = (
+                            f'<div class="question"><b>{question}</b></div>'
+                            f"{freetext_html}"
+                        )
+                    # Append free-text card and skip MCQ logic
+                    cards.append(
+                        {
+                            "id": cid,
+                            "question": full_q,
+                            "answer": answer,
+                            "explanation": "",
+                            "score_text": "",
+                            "sources": [],
+                            "tags": [],
+                            "images": [],
+                            "multi": False,
+                            "percent": "",
+                            "freetext": True,
+                        }
+                    )
+                    continue
+                except NoSuchElementException:
+                    pass
 
                 # Scrape options and fetch correct answers via API
                 option_divs = driver.find_elements(
@@ -289,6 +345,58 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                     multi_flag = form.get_attribute("rel") == "pickmany"
                 except Exception:
                     multi_flag = False
+
+                # Detect free-text questions
+                try:
+                    freetext_elem = driver.find_element(
+                        By.CSS_SELECTOR, "div.freetext-answer"
+                    )
+                    freetext_html = freetext_elem.get_attribute("outerHTML")
+                    # Fetch provided answer via solution endpoint
+                    sess = requests.Session()
+                    for c in driver.get_cookies():
+                        sess.cookies.set(c["name"], c["value"])
+                    sol_resp = sess.post(
+                        f"{base_host}/solution/{cid}/",
+                        data=[("guess", ""), ("timer", "1")],
+                    )
+                    json_sol = {}
+                    try:
+                        json_sol = sol_resp.json()
+                    except Exception:
+                        pass
+                    answer = json_sol.get("feedback", "").strip()
+                    # Build front HTML including the textarea element
+                    if background:
+                        full_q = (
+                            f'<div class="background">{background}</div>'
+                            f'<div class="question"><b>{question}</b></div>'
+                            f"{freetext_html}"
+                        )
+                    else:
+                        full_q = (
+                            f'<div class="question"><b>{question}</b></div>'
+                            f"{freetext_html}"
+                        )
+                    # Append free-text card and skip MCQ logic
+                    cards.append(
+                        {
+                            "id": cid,
+                            "question": full_q,
+                            "answer": answer,
+                            "explanation": "",
+                            "score_text": "",
+                            "sources": [],
+                            "tags": [],
+                            "images": [],
+                            "multi": False,
+                            "percent": "",
+                            "freetext": True,
+                        }
+                    )
+                    continue
+                except NoSuchElementException:
+                    pass
 
                 # Scrape options and fetch correct answers via API
                 option_divs = driver.find_elements(
@@ -508,27 +616,52 @@ hr#answer-divider { border: none; border-top: 1px solid #888; margin: 16px 0; }
             }
         ],
     )
+    text_model = genanki.Model(
+        MODEL_ID + 1,
+        "FreeText Q&A",
+        fields=[{"name": "Front"}, {"name": "CorrectAnswer"}, {"name": "Explanation"}],
+        css=mcq_model.css,
+        templates=[
+            {
+                "name": "Card 1",
+                "qfmt": "{{Front}}",
+                "afmt": """
+{{Front}}
+<hr id="answer-divider">
+<div id="answer-section">
+  <b>Answer:</b> {{CorrectAnswer}}
+</div>
+{{#Explanation}}
+<div id="explanation"><b>Explanation:</b> {{Explanation}}</div>
+{{/Explanation}}
+""",
+            }
+        ],
+    )
     deck = genanki.Deck(DECK_ID_BASE, deck_name)
     for c in data:
-        # determine if multiple answers are allowed
         multi_flag = c.get("multi", False)
         multi = "1" if multi_flag else ""
-        # Build sources_html as HTML list items for the Sources field
         sources_html = "".join(f"<li>{src}</li>" for src in c.get("sources", []))
-        # Use question HTML as Front, answer, explanation, score_text, percent, sources (as HTML), multi flag, and CardId
+        model = text_model if c.get("freetext") else mcq_model
+        fields = (
+            [c["question"], c["answer"], c.get("explanation", "")]
+            if c.get("freetext")
+            else [
+                c["question"],
+                c["answer"],
+                c.get("explanation", ""),
+                c.get("score_text", ""),
+                c.get("percent", ""),
+                sources_html,
+                multi,
+                c["id"],
+            ]
+        )
         deck.add_note(
             genanki.Note(
-                model=mcq_model,
-                fields=[
-                    c["question"],
-                    c["answer"],
-                    c.get("explanation", ""),
-                    c.get("score_text", ""),
-                    c.get("percent", ""),
-                    sources_html,
-                    multi,
-                    c["id"],
-                ],
+                model=model,
+                fields=fields,
                 tags=c.get("tags", []),
             )
         )
@@ -536,78 +669,100 @@ hr#answer-divider { border: none; border-top: 1px solid #888; margin: 16px 0; }
     print(f"[+] APKG → {path}")
 
 
-def main():
-    p = argparse.ArgumentParser(
-        description="Export UCalgary Cards → Anki (via Selenium)"
-    )
-    p.add_argument(
-        "--deck",
-        dest="deck",
-        required=False,
-        help="Deck ID to process (optional if base URL contains a details URL)",
-    )
-    p.add_argument("--username", help="UCalgary email (overrides .env)")
-    p.add_argument("--password", help="UCalgary password (overrides .env)")
-    p.add_argument(
-        "--base-url",
-        dest="base_url_override",
-        help=(
-            "Host (e.g. https://cards.ucalgary.ca) or full "
-            "details URL (…/details/ID?bag_id=XYZ) to override .env"
-        ),
-    )
-    p.add_argument(
-        "--out-prefix",
-        default="output",
-        help="Output prefix (e.g. pediatrics_decks)",
-    )
-    args = p.parse_args()
+def prompt_credentials(base_host):
+    from selenium import webdriver
+    from selenium.webdriver.common.by import By
+    from selenium.common.exceptions import TimeoutException
 
-    print("Script started")
-    email = args.username or EMAIL
-    pw = args.password or PW
-    if not email or not pw:
-        p.error(
-            "🔒 Missing credentials – set UC_EMAIL/UC_PW in .env or pass --username/--password"
+    # reuse ChromeOptions setup
+    opts = webdriver.ChromeOptions()
+    opts.add_argument("--headless")
+    opts.add_argument("--disable-gpu")
+    opts.add_argument("--no-sandbox")
+    opts.add_argument("--disable-dev-shm-usage")
+    for attempt in range(3):
+        email = input("Enter your UCalgary email: ").strip()
+        password = getpass.getpass("Enter your UCalgary password: ")
+        driver = webdriver.Chrome(options=opts)
+        # override print
+        driver.execute_cdp_cmd(
+            "Page.addScriptToEvaluateOnNewDocument",
+            {"source": "window.print = () => {};"},
         )
-    deck_id_arg = args.deck
+        try:
+            selenium_login(driver, email, password, base_host)
+            print("Login successful")
+            driver.quit()
+            return email, password
+        except Exception as e:
+            print(f"Login failed: {e}")
+            driver.quit()
+    sys.exit("Failed to login after 3 attempts")
 
-    # figure out host, details_url and bag_id
-    if args.base_url_override:
-        po = urlparse(args.base_url_override)
-        host = f"{po.scheme}://{po.netloc}" if po.scheme else args.base_url_override
+
+def main():
+    # Interactive credential setup
+    # Determine host and default BASE from .env parsing above
+    host = BASE
+    # Prompt URL every run
+    base_url_override = input("Enter UCalgary base URL or details URL: ").strip()
+    # Derive details_url and bag_id same as before but using base_url_override
+    if base_url_override:
+        po = urlparse(base_url_override)
+        host = f"{po.scheme}://{po.netloc}" if po.scheme else base_url_override
         if "/details/" in po.path:
-            details_url = args.base_url_override
+            details_url = base_url_override
             bag_id = parse_qs(po.query).get("bag_id", [None])[0] or BAG_ID_DEFAULT
         else:
             details_url = None
-            bag_id = BAG_ID_DEFAULT or deck_id_arg
+            bag_id = BAG_ID_DEFAULT
     else:
-        host = BASE
         details_url = default_details_url
-        bag_id = BAG_ID_DEFAULT or deck_id_arg
-
-    # Determine deck_id: prefer CLI, otherwise parse from details_url
-    if deck_id_arg:
-        deck_id = deck_id_arg
-    elif details_url:
-        # extract deck ID from the details URL path
+        bag_id = BAG_ID_DEFAULT
+    # Load or prompt credentials
+    if os.path.exists(CONFIG_PATH):
+        with open(CONFIG_PATH) as cf:
+            cfg = json.load(cf)
+        email = cfg.get("username")
+        password = cfg.get("password")
+    else:
+        email, password = prompt_credentials(host)
+        with open(CONFIG_PATH, "w") as cf:
+            json.dump({"username": email, "password": password}, cf)
+    # If login fails during scraping, prompt to update credentials
+    try:
+        cards = selenium_scrape_deck(
+            deck_id=None,
+            email=email,
+            password=password,
+            base_host=host,
+            bag_id=bag_id,
+            details_url=details_url,
+        )
+    except RuntimeError as e:
+        print(f"Login error during scrape: {e}")
+        email, password = prompt_credentials(host)
+        with open(CONFIG_PATH, "w") as cf:
+            json.dump({"username": email, "password": password}, cf)
+        cards = selenium_scrape_deck(
+            deck_id=None,
+            email=email,
+            password=password,
+            base_host=host,
+            bag_id=bag_id,
+            details_url=details_url,
+        )
+    # Determine deck_id for output naming
+    if details_url:
         parsed_details = urlparse(details_url)
         try:
             deck_id = parsed_details.path.split("/details/")[1]
         except (IndexError, AttributeError):
-            p.error("🔧 Could not parse deck ID from base URL")
+            deck_id = "unknown"
     else:
-        p.error(
-            "🔒 Missing deck ID – set UC_BASE_URL to a details URL in .env or pass --deck"
-        )
-
-    cards = selenium_scrape_deck(deck_id, email, pw, host, bag_id, details_url)
+        deck_id = bag_id or "unknown"
     deck_name = f"Deck_{deck_id}"
     os.makedirs(deck_name, exist_ok=True)
-
-    # export_json(cards, f"{args.out_prefix}.json")
-    # export_csv(cards, f"{args.out_prefix}.csv")
     output_path = os.path.join(deck_name, f"{deck_name}.apkg")
     export_apkg(cards, deck_name, output_path)
 

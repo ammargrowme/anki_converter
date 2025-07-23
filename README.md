@@ -11,24 +11,18 @@ A command-line tool that logs into the University of Calgary Cards site, scrapes
 ## Table of Contents
 
 1. [Installation](#installation)
-   - [Install Homebrew & Dependencies](#install-homebrew--dependencies)
-   - [Clone & Setup Virtualenv](#clone--setup-virtualenv)
-   - [Windows (PowerShell)](#windows-powershell)
-2. [Configuration](#configuration)
-   - [Creating the .env file](#creating-the-env-file)
+2. [Setup and Configuration](#setup-and-configuration)
 3. [Usage](#usage)
-   - [Run Converter](#run-converter)
-4. [Flags](#flags)
-5. [Expectations](#expectations)
-6. [Troubleshooting](#troubleshooting)
+4. [Expectations](#expectations)
+5. [Troubleshooting](#troubleshooting)
    - [Common Issues](#common-issues)
-7. [Tips](#tips)
-8. [Full Setup Guides](#full-setup-guides)
+6. [Tips](#tips)
+7. [Full Setup Guides](#full-setup-guides)
    - [macOS Full Setup](#macos-full-setup)
    - [Ubuntu/Debian Linux Full Setup](#ubuntudebian-linux-full-setup)
    - [Windows Full Setup](#windows-full-setup)
-9. [Requirements by OS](#requirements-by-os)
-10. [Editing Files in Terminal Editors](#editing-files-in-terminal-editors)
+8. [Requirements by OS](#requirements-by-os)
+9. [Editing Files in Terminal Editors](#editing-files-in-terminal-editors)
 
 ---
 
@@ -153,131 +147,37 @@ Install system dependencies as needed (see Requirements by OS).
 
 ---
 
-## Configuration
+## Setup and Configuration
 
-Provide your University of Calgary credentials and the target cards URL so the script can authenticate and fetch your cards.
+On first run, the script will interactively prompt you for your University of Calgary email, password, and the target cards URL. Credentials will be validated (up to 3 attempts) and then securely saved in a local `config.json`. Subsequent runs will only ask for the URL.
 
-#### Locating and Opening the Project Folder
+- **First run**:
 
-You need to run commands from the `anki_converter` project folder. If you don't know where it is:
+  1. Execute `python export_ucalgary_anki.py`.
+  2. When prompted, enter your **email** and **password**.
+  3. The script attempts to log in; if login fails, you get up to 3 attempts.
+  4. On successful login, credentials are saved to `config.json`.
+  5. You are then prompted for the **cards URL**, after which the deck is generated.
 
-- **On macOS/Linux via Terminal:**
-  1. Open Terminal.
-  2. Use `pwd` to print your current directory.
-  3. If the folder is in your home directory, run:
-     ```bash
-     cd ~/anki_converter
-     ```
-  4. If it's elsewhere, run:
-     ```bash
-     cd /path/to/anki_converter
-     ```
-- **On Windows via PowerShell:**
-  1. Open PowerShell.
-  2. Use `Get-Location` to show current path.
-  3. If cloned to your user folder:
-     ```powershell
-     cd $HOME\anki_converter
-     ```
-  4. Or adjust to the correct path:
-     ```powershell
-     cd C:\path\to\anki_converter
-     ```
-- **Via File Explorer/Finder:**
-  - macOS: In Finder, navigate to the folder, then press **⌘ + ↑** to go up or **⌘ + ↓** to open.
-  - Windows: In File Explorer, locate the folder and double-click to open.
+- **Subsequent runs**:
+  1. Execute `python export_ucalgary_anki.py`.
+  2. The script loads credentials from `config.json`.
+  3. You are prompted for the **cards URL**.
+  4. If login fails (credentials changed), you will be re-prompted (up to 3 attempts) and `config.json` updated.
 
-#### Creating the .env file
-
-1. Open your terminal or command prompt.
-
-2. Change directory to the cloned repo folder:
-   **Copy & Paste:**
-
-   ```bash
-   cd anki_converter
-   ```
-
-3. Create a new file named `.env`:
-
-   - On macOS/Linux:
-     **Copy & Paste:**
-
-     ```bash
-     touch .env
-     ```
-
-   - On Windows:
-     **Copy & Paste:**
-
-     ```powershell
-     New-Item .env -ItemType File
-     ```
-
-4. Open `.env` in your preferred text editor and paste the following, replacing placeholders:
-
-**Copy & Paste into your `.env` file:**
-
-```ini
-UC_EMAIL=you@ucalgary.ca
-UC_PW=your_password
-UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>
-```
-
-5. Save and close the file.
-
-##### Opening the .env file
-
-- **On macOS/Linux:**
-  **Copy & Paste:**
-
-  ```bash
-  # In the project folder:
-  nano .env
-  # or
-  vi .env
-  ```
-
-- **On Windows PowerShell:**
-  **Copy & Paste:**
-
-  ```powershell
-  notepad .env
-  ```
+(No CLI flags or `.env` file edits are required.)
 
 ---
 
 ## Usage
 
-Run the converter script to scrape cards from UofC and generate an Anki deck.
-
-#### Run Converter
-
-**Copy & Paste:**
+Simply run:
 
 ```bash
-# Default:
 python export_ucalgary_anki.py
-
-# Override URL:
-python export_ucalgary_anki.py --base-url https://cards.ucalgary.ca/details/12345
-
-# Override Deck ID:
-python export_ucalgary_anki.py --deck <ID>
 ```
 
----
-
-## Flags
-
-Customize script behavior by overriding default settings via command-line options.
-
-```text
---deck <ID>         Process by deck ID instead of UC_BASE_URL
---username <email>  Override UC_EMAIL
---password <pw>     Override UC_PW
---base-url <URL>    Override UC_BASE_URL
-```
+and follow the on‑screen prompts. No flags or environment files are needed.
 
 ---
 
@@ -435,37 +335,7 @@ chmod +x setup.sh
 source .venv/bin/activate
 ```
 
-**7. Create and configure `.env`:**
-
-**Copy & Paste:**
-
-```bash
-touch .env
-```
-
-Open `.env` in a text editor and paste:
-
-**Copy & Paste into your `.env` file:**
-
-```ini
-UC_EMAIL=you@ucalgary.ca
-UC_PW=your_password
-UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>
-```
-
-**7a. Open and edit `.env`:**
-
-**Copy & Paste:**
-
-```bash
-nano .env   # or vi .env
-```
-
-Make sure to save changes before exiting (Ctrl+O, Enter, Ctrl+X in nano).
-
-**8. Run the converter:**
-
-**Copy & Paste:**
+**7. Run the converter and follow interactive prompts:**
 
 ```bash
 python export_ucalgary_anki.py
@@ -546,37 +416,7 @@ chmod +x setup.sh
 source .venv/bin/activate
 ```
 
-**8. Create and configure `.env`:**
-
-**Copy & Paste:**
-
-```bash
-touch .env
-```
-
-Edit `.env` and add:
-
-**Copy & Paste into your `.env` file:**
-
-```ini
-UC_EMAIL=you@ucalgary.ca
-UC_PW=your_password
-UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>
-```
-
-**8a. Open and edit `.env`:**
-
-**Copy & Paste:**
-
-```bash
-nano .env   # or vi .env
-```
-
-Make sure to save changes before exiting (Ctrl+O, Enter, Ctrl+X in nano).
-
-**9. Run the converter:**
-
-**Copy & Paste:**
+**8. Run the converter and follow interactive prompts:**
 
 ```bash
 python export_ucalgary_anki.py
@@ -640,35 +480,7 @@ git --version   # should print 'git version ...'
 python --version  # should print 'Python 3.x.x'
 ```
 
-**8. Create and configure `.env`:**
-
-**Copy & Paste:**
-
-```powershell
-New-Item .env -ItemType File
-```
-
-Open `.env` in Notepad and paste:
-
-**Copy & Paste into your `.env` file:**
-
-```ini
-UC_EMAIL=you@ucalgary.ca
-UC_PW=your_password
-UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>
-```
-
-**8a. Open `.env` for editing:**
-
-**Copy & Paste:**
-
-```powershell
-notepad .env
-```
-
-**9. Run the converter:**
-
-**Copy & Paste:**
+**9. Run the converter and follow interactive prompts:**
 
 ```powershell
 python export_ucalgary_anki.py
