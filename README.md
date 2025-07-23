@@ -32,13 +32,19 @@ Install required system packages and set up the project environment across suppo
 
 ### macOS / Linux
 
-Use Homebrew to install Git, Python 3, Google Chrome, and ChromeDriver for headless browsing.
+**Opening Terminal on macOS:**
+
+- Press `⌘` + `Space`, type `Terminal`, and press `Enter`.
+- Or open `Finder` > `Applications` > `Utilities` > `Terminal`.
+
+**Basic Terminal Navigation:**
+
+- `pwd` shows your current folder path.
+- `ls` lists files and folders.
+- `cd <folder>` moves into a folder (e.g. `cd anki_converter`).
+- `cd ..` moves up one level.
 
 #### Install Homebrew & Dependencies
-
-<a id="install-homebrew--dependencies"></a>
-
-<details>
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -46,13 +52,7 @@ brew install git python3
 brew install --cask google-chrome chromedriver
 ```
 
-</details>
-
 #### Clone & Setup Virtualenv
-
-<a id="clone--setup-virtualenv"></a>
-
-<details>
 
 ```bash
 git clone https://github.com/ammargrowme/anki_converter.git && cd anki_converter
@@ -60,13 +60,7 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
-</details>
-
 #### Windows (PowerShell)
-
-<a id="windows-powershell"></a>
-
-<details>
 
 ```powershell
 # Git
@@ -79,8 +73,6 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-</details>
-
 ---
 
 ## Configuration
@@ -88,10 +80,6 @@ pip install -r requirements.txt
 Provide your University of Calgary credentials and the target cards URL so the script can authenticate and fetch your cards.
 
 #### Creating the .env file
-
-<a id="creating-the-env-file"></a>
-
-<details>
 
 1. Open your terminal or command prompt.
 2. Change directory to the cloned repo folder:
@@ -117,8 +105,6 @@ UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>
 
 5. Save and close the file.
 
-</details>
-
 ---
 
 ## Usage
@@ -126,10 +112,6 @@ UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>
 Run the converter script to scrape cards from UofC and generate an Anki deck.
 
 #### Run Converter
-
-<a id="run-converter"></a>
-
-<details>
 
 ```bash
 # Default:
@@ -141,8 +123,6 @@ python export_ucalgary_anki.py --base-url https://cards.ucalgary.ca/details/1234
 # Override Deck ID:
 python export_ucalgary_anki.py --deck <ID>
 ```
-
-</details>
 
 ---
 
@@ -173,15 +153,13 @@ Observe the following output formats and terminal feedback when running the scri
 
 Common issues and their fixes when installing dependencies or running the script.
 
-<details>
-<summary>Common Issues</summary>
+### Common Issues
 
 - Module not found → `pip install -r requirements.txt`
 - ChromeDriver mismatch → download matching version
 - Hidden browser → comment out `--headless`
 - Verify PATH → `which chromedriver` / `where chromedriver`
 - Internet & permissions
-</details>
 
 ---
 
