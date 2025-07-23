@@ -27,10 +27,12 @@ A command-line tool that logs into the University of Calgary Cards site, scrapes
    - [macOS Full Setup](#macos-full-setup)
    - [Ubuntu/Debian Linux Full Setup](#ubuntudebian-linux-full-setup)
    - [Windows Full Setup](#windows-full-setup)
+9. [Requirements by OS](#requirements-by-os)
+10. [Editing Files in Terminal Editors](#editing-files-in-terminal-editors)
 
 ---
 
-## Installation
+<a id="requirements-by-os"></a>
 
 ## Requirements by OS
 
@@ -68,15 +70,15 @@ Refer to the Windows setup instructions in [Windows (PowerShell)](#windows-power
 
 **Opening Terminal on macOS:**
 
-- Press `⌘` + `Space`, type `Terminal`, and press `Enter`.
-- Or open `Finder` > `Applications` > `Utilities` > `Terminal`.
+- Press **⌘ + Space**, **type `Terminal`**, and press **Enter**.
+- Or open **Finder > Applications > Utilities > Terminal**.
 
 **Basic Terminal Navigation:**
 
-- `pwd` shows your current folder path.
-- `ls` lists files and folders.
-- `cd <folder>` moves into a folder (e.g. `cd anki_converter`).
-- `cd ..` moves up one level.
+- **`pwd`** shows your current folder path.
+- **`ls`** lists files and folders.
+- **`cd <folder>`** moves into a folder (e.g. **`cd anki_converter`**).
+- **`cd ..`** moves up one level.
 
 #### Install Homebrew & Dependencies
 
@@ -108,6 +110,8 @@ pip install -r requirements.txt
 ```
 
 ---
+
+## Installation
 
 ## Configuration
 
@@ -203,13 +207,13 @@ Common issues and their fixes when installing dependencies or running the script
 
 ### Common Issues
 
-- Module not found → `pip install -r requirements.txt`
+- Module not found → **`pip install -r requirements.txt`**
 - ChromeDriver mismatch → download matching version
 - Hidden browser → comment out `--headless`
-- Verify PATH → `which chromedriver` / `where chromedriver`
+- Verify PATH → **`which chromedriver`** / **`where chromedriver`**
 - Internet & permissions
-- Permission denied errors when running scripts → use `chmod +x`.
-- Virtual environment errors → ensure `python3 -m venv .venv` runs and activate correctly.
+- Permission denied errors when running scripts → use **`chmod +x`**.
+- Virtual environment errors → ensure **`python3 -m venv .venv`** runs and activate correctly.
 - `.env` file parse errors → ensure no BOM or extra whitespace.
 - Network timeouts → check firewall or proxy settings.
 
@@ -219,13 +223,15 @@ Common issues and their fixes when installing dependencies or running the script
 
 Additional best practices to ensure smooth operation and maintenance.
 
-- Check `python3 --version` / `pip --version`
+- Check **`python3 --version`** / **`pip --version`**
 - Keep Chrome/ChromeDriver in sync
 - No extra spaces in `.env`
 - Ensure active internet
-- Scripts executable (`chmod +x setup.sh`)
+- Scripts executable (**`chmod +x setup.sh`**)
 
 ---
+
+<a id="editing-files-in-terminal-editors"></a>
 
 ## Editing Files in Terminal Editors
 
@@ -235,32 +241,32 @@ When using command-line editors to modify files (e.g., `.env`), note:
 
 - Navigation: Use the arrow keys; mouse does not work.
 - To delete text:
-  - `Ctrl+K` cuts (deletes) the current line.
-  - `Ctrl+^` then arrow keys selects text; `Ctrl+K` cuts selection.
-- To paste: `Ctrl+U`.
-- To save (write out): `Ctrl+O`, then `Enter` to confirm.
-- To exit: `Ctrl+X`.
-- To cancel an action: `Ctrl+C`.
+  - **Ctrl+K** cuts (deletes) the current line.
+  - **Ctrl+^** then arrow keys selects text; **Ctrl+K** cuts selection.
+- To paste: **Ctrl+U**.
+- To save (write out): **Ctrl+O**, then **Enter** to confirm.
+- To exit: **Ctrl+X**.
+- To cancel an action: **Ctrl+C**.
 
 ### Vi/Vim (macOS/Linux)
 
 - Modes:
   - **Normal mode** (navigate, delete)
   - **Insert mode** (type text)
-- Enter Insert mode: press `i`.
-- Exit Insert mode: press `Esc`.
-- Navigation: arrow keys or `h` (left), `j` (down), `k` (up), `l` (right).
+- Enter Insert mode: press **i**.
+- Exit Insert mode: press **Esc**.
+- Navigation: arrow keys or **h** (left), **j** (down), **k** (up), **l** (right).
 - To delete:
-  - `dd` deletes the current line.
-  - `x` deletes the character under the cursor.
-- To save and exit: `:wq` then `Enter`.
-- To exit without saving: `:q!` then `Enter`.
+  - **dd** deletes the current line.
+  - **x** deletes the character under the cursor.
+- To save and exit: **:wq** then **Enter**.
+- To exit without saving: **:q!** then **Enter**.
 
 ### Notepad (Windows)
 
 - Standard GUI editor; use mouse or arrow keys to navigate.
-- Save: `Ctrl+S`
-- Close: click "X" or press `Alt+F4`.
+- Save: **Ctrl+S**
+- Close: click "X" or press **Alt+F4**.
 
 ---
 
@@ -270,143 +276,201 @@ When using command-line editors to modify files (e.g., `.env`), note:
 
 Follow these steps from a clean system:
 
-1. **Open Terminal:**
-   - Press `⌘` + `Space`, type `Terminal`, and press `Enter`.
-2. **Install Homebrew:**
-   ```bash
-   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-   ```
-3. **Install required tools:**
-   ```bash
-   brew install git python3
-   brew install --cask google-chrome chromedriver
-   ```
-4. **Clone the repository:**
-   ```bash
-   git clone https://github.com/ammargrowme/anki_converter.git
-   cd anki_converter
-   ```
-5. **Set up virtual environment & install dependencies:**
-   ```bash
-   chmod +x setup.sh
-   ./setup.sh
-   ```
-6. **Activate the virtual environment:**
-   ```bash
-   source .venv/bin/activate
-   ```
-7. **Create and configure `.env`:**
-   ```bash
-   touch .env
-   ```
-   Open `.env` in a text editor and paste:
-   ```ini
-   UC_EMAIL=you@ucalgary.ca
-   UC_PW=your_password
-   UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>
-   ```
-   7a. Open and edit `.env`:
-   ```bash
-   nano .env   # or vi .env
-   ```
-   Make sure to save changes before exiting (Ctrl+O, Enter, Ctrl+X in nano).
-8. **Run the converter:**
-   ```bash
-   python export_ucalgary_anki.py
-   ```
+**1. Open Terminal:**
+
+- Press **⌘ + Space**, **type `Terminal`**, and press **Enter**.
+
+**2. Install Homebrew:**
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+**3. Install required tools:**
+
+```bash
+brew install git python3
+brew install --cask google-chrome chromedriver
+```
+
+**4. Clone the repository:**
+
+```bash
+git clone https://github.com/ammargrowme/anki_converter.git
+cd anki_converter
+```
+
+**5. Set up virtual environment & install dependencies:**
+
+```bash
+chmod +x setup.sh
+./setup.sh
+```
+
+**6. Activate the virtual environment:**
+
+```bash
+source .venv/bin/activate
+```
+
+**7. Create and configure `.env`:**
+
+```bash
+touch .env
+```
+
+Open `.env` in a text editor and paste:
+
+```ini
+UC_EMAIL=you@ucalgary.ca
+UC_PW=your_password
+UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>
+```
+
+**7a. Open and edit `.env`:**
+
+```bash
+nano .env   # or vi .env
+```
+
+Make sure to save changes before exiting (Ctrl+O, Enter, Ctrl+X in nano).
+
+**8. Run the converter:**
+
+```bash
+python export_ucalgary_anki.py
+```
 
 ### Ubuntu/Debian Linux Full Setup
 
 Follow these steps from a clean Ubuntu/Debian system:
 
-1. **Open Terminal** (Ctrl+Alt+T).
-2. **Update packages and install prerequisites:**
-   ```bash
-   sudo apt update
-   sudo apt install -y git python3 python3-venv python3-pip wget
-   ```
-3. **Install Chrome:**
-   ```bash
-   wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-   sudo apt install -y ./google-chrome-stable_current_amd64.deb
-   ```
-4. **Install ChromeDriver:**
-   ```bash
-   sudo apt install -y chromium-chromedriver
-   ```
-5. **Clone repository & enter folder:**
-   ```bash
-   git clone https://github.com/ammargrowme/anki_converter.git
-   cd anki_converter
-   ```
-6. **Set up virtual environment & install dependencies:**
-   ```bash
-   chmod +x setup.sh
-   ./setup.sh
-   ```
-7. **Activate virtual environment:**
-   ```bash
-   source .venv/bin/activate
-   ```
-8. **Create and configure `.env`:**
-   ```bash
-   touch .env
-   ```
-   Edit `.env` and add:
-   ```ini
-   UC_EMAIL=you@ucalgary.ca
-   UC_PW=your_password
-   UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>
-   ```
-   8a. Open and edit `.env`:
-   ```bash
-   nano .env   # or vi .env
-   ```
-   Make sure to save changes before exiting (Ctrl+O, Enter, Ctrl+X in nano).
-9. **Run the converter:**
-   ```bash
-   python export_ucalgary_anki.py
-   ```
+**1. Open Terminal** (Ctrl+Alt+T).
+
+**2. Update packages and install prerequisites:**
+
+```bash
+sudo apt update
+sudo apt install -y git python3 python3-venv python3-pip wget
+```
+
+**3. Install Chrome:**
+
+```bash
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+sudo apt install -y ./google-chrome-stable_current_amd64.deb
+```
+
+**4. Install ChromeDriver:**
+
+```bash
+sudo apt install -y chromium-chromedriver
+```
+
+**5. Clone repository & enter folder:**
+
+```bash
+git clone https://github.com/ammargrowme/anki_converter.git
+cd anki_converter
+```
+
+**6. Set up virtual environment & install dependencies:**
+
+```bash
+chmod +x setup.sh
+./setup.sh
+```
+
+**7. Activate virtual environment:**
+
+```bash
+source .venv/bin/activate
+```
+
+**8. Create and configure `.env`:**
+
+```bash
+touch .env
+```
+
+Edit `.env` and add:
+
+```ini
+UC_EMAIL=you@ucalgary.ca
+UC_PW=your_password
+UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>
+```
+
+**8a. Open and edit `.env`:**
+
+```bash
+nano .env   # or vi .env
+```
+
+Make sure to save changes before exiting (Ctrl+O, Enter, Ctrl+X in nano).
+
+**9. Run the converter:**
+
+```bash
+python export_ucalgary_anki.py
+```
 
 ### Windows Full Setup
 
 Follow these steps from a clean Windows machine:
 
-1. **Install Git:** Download & run installer from https://git-scm.com/download/win
-2. **Install Python 3:** Download & install from https://www.python.org/downloads/windows/ (check “Add Python to PATH”)
-3. **Install Google Chrome:** Download & install from https://www.google.com/chrome/
-4. **Install ChromeDriver:**
-   - Visit https://chromedriver.chromium.org/downloads
-   - Download the version matching your Chrome
-   - Unzip and place `chromedriver.exe` in a folder on your PATH
-5. **Open PowerShell** (Win+X, then “Windows PowerShell”).
-6. **Clone repository & enter folder:**
-   ```powershell
-   git clone https://github.com/ammargrowme/anki_converter.git
-   cd anki_converter
-   ```
-7. **Set up virtual environment & install dependencies:**
-   ```powershell
-   python -m venv .venv
-   .\.venv\Scripts\Activate.ps1
-   pip install --upgrade pip
-   pip install -r requirements.txt
-   ```
-8. **Create and configure `.env`:**
-   ```powershell
-   New-Item .env -ItemType File
-   ```
-   Open `.env` in Notepad and paste:
-   ```ini
-   UC_EMAIL=you@ucalgary.ca
-   UC_PW=your_password
-   UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>
-   ```
-   8a. Open `.env` for editing:
-   ```powershell
-   notepad .env
-   ```
-9. **Run the converter:**
-   ```powershell
-   python export_ucalgary_anki.py
-   ```
+**1. Install Git:** Download & run installer from https://git-scm.com/download/win
+
+**2. Install Python 3:** Download & install from https://www.python.org/downloads/windows/ (check “Add Python to PATH”)
+
+**3. Install Google Chrome:** Download & install from https://www.google.com/chrome/
+
+**4. Install ChromeDriver:**
+
+- Visit https://chromedriver.chromium.org/downloads
+- Download the version matching your Chrome
+- Unzip and place `chromedriver.exe` in a folder on your PATH
+
+**5. Open PowerShell** (Win+X, then “Windows PowerShell”).
+
+**6. Clone repository & enter folder:**
+
+```powershell
+git clone https://github.com/ammargrowme/anki_converter.git
+cd anki_converter
+```
+
+**7. Set up virtual environment & install dependencies:**
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+**8. Create and configure `.env`:**
+
+```powershell
+New-Item .env -ItemType File
+```
+
+Open `.env` in Notepad and paste:
+
+```ini
+UC_EMAIL=you@ucalgary.ca
+UC_PW=your_password
+UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>
+```
+
+**8a. Open `.env` for editing:**
+
+```powershell
+notepad .env
+```
+
+**9. Run the converter:**
+
+```powershell
+python export_ucalgary_anki.py
+```
