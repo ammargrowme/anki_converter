@@ -248,9 +248,29 @@ chmod +x activate.sh
 # Create Windows activation script
 cat > activate.bat << 'EOF'
 @echo off
+echo Activating Python virtual environment...
 call .venv\Scripts\activate.bat
+echo.
 echo Virtual environment activated
 echo Run: python export_ucalgary_anki.py
+echo.
+echo This window will stay open so you can run commands.
+echo To run the converter, type: python export_ucalgary_anki.py
+echo To exit, type: exit
+echo.
+cmd /k
+EOF
+
+# Create PowerShell activation script for Windows
+cat > activate.ps1 << 'EOF'
+Write-Host "🔌 Activating Python virtual environment..." -ForegroundColor Green
+& .\.venv\Scripts\Activate.ps1
+Write-Host ""
+Write-Host "✅ Virtual environment activated" -ForegroundColor Green  
+Write-Host "🚀 Run: python export_ucalgary_anki.py" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "This PowerShell window will stay open for you to run commands." -ForegroundColor Cyan
+Write-Host "Type 'exit' to close when done." -ForegroundColor Cyan
 EOF
 
 echo ""
@@ -261,8 +281,9 @@ echo "📋 NEXT STEPS:"
 echo ""
 echo "1️⃣  Activate the environment:"
 if [[ $OS == "windows" ]]; then
-    echo "   Windows:  .venv\\Scripts\\activate"
-    echo "           or double-click activate.bat"
+    echo "   Windows CMD:      Double-click activate.bat"
+    echo "   Windows PowerShell: Right-click activate.ps1 → Run with PowerShell"
+    echo "   Or manually:      .venv\\Scripts\\activate"
 else
     echo "   macOS/Linux:  source .venv/bin/activate"
     echo "               or run: ./activate.sh"
@@ -283,7 +304,8 @@ echo ""
 echo "📁 Files created:"
 echo "   • .venv/          - Python virtual environment"
 echo "   • activate.sh     - Quick activation script (Unix)"
-echo "   • activate.bat    - Quick activation script (Windows)"
+echo "   • activate.bat    - Quick activation script (Windows Command Prompt)"
+echo "   • activate.ps1    - Quick activation script (Windows PowerShell)"
 echo ""
 echo "🔒 Security notes:"
 echo "   • Credentials saved in: ~/.uc_anki_config.json"

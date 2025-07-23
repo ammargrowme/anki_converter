@@ -87,6 +87,14 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
     opts.add_argument("--no-sandbox")
     opts.add_argument("--disable-dev-shm-usage")
     opts.add_argument("--kiosk-printing")
+    # Suppress Chrome error messages and warnings
+    opts.add_argument("--disable-logging")
+    opts.add_argument("--disable-extensions")
+    opts.add_argument("--disable-web-security")
+    opts.add_argument("--disable-features=VizDisplayCompositor")
+    opts.add_argument("--log-level=3")  # Only show fatal errors
+    opts.add_experimental_option('excludeSwitches', ['enable-logging'])
+    opts.add_experimental_option('useAutomationExtension', False)
     opts.add_experimental_option(
         "prefs",
         {
@@ -719,12 +727,17 @@ def prompt_credentials(base_host):
     from selenium.webdriver.common.by import By
     from selenium.common.exceptions import TimeoutException
 
-    # reuse ChromeOptions setup
+    # reuse ChromeOptions setup with error suppression
     opts = webdriver.ChromeOptions()
     opts.add_argument("--headless")
     opts.add_argument("--disable-gpu")
     opts.add_argument("--no-sandbox")
     opts.add_argument("--disable-dev-shm-usage")
+    # Suppress Chrome error messages
+    opts.add_argument("--disable-logging")
+    opts.add_argument("--log-level=3")
+    opts.add_experimental_option('excludeSwitches', ['enable-logging'])
+    opts.add_experimental_option('useAutomationExtension', False)
     for attempt in range(3):
         email = input("Enter your UCalgary email: ").strip()
         password = getpass.getpass("Enter your UCalgary password: ")
