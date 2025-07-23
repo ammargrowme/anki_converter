@@ -611,7 +611,9 @@ hr#answer-divider { border: none; border-top: 1px solid #888; margin: 16px 0; }
 </div>
 {{/Sources}}
 <hr>
+{{#Explanation}}
 <div id="explanation"><b>Explanation:</b> {{Explanation}}</div>
+{{/Explanation}}
 """,
             }
         ],
