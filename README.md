@@ -139,6 +139,20 @@ UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>
 
 5. Save and close the file.
 
+##### Opening the .env file
+
+- **On macOS/Linux:**
+  ```bash
+  # In the project folder:
+  nano .env
+  # or
+  vi .env
+  ```
+- **On Windows PowerShell:**
+  ```powershell
+  notepad .env
+  ```
+
 ---
 
 ## Usage
