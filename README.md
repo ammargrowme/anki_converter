@@ -206,3 +206,138 @@ Additional best practices to ensure smooth operation and maintenance.
 - No extra spaces in `.env`
 - Ensure active internet
 - Scripts executable (`chmod +x setup.sh`)
+
+---
+
+## Full Setup Guides
+
+### macOS Full Setup
+
+Follow these steps from a clean system:
+
+1. **Open Terminal:**
+   - Press `⌘` + `Space`, type `Terminal`, and press `Enter`.
+2. **Install Homebrew:**
+   ```bash
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   ```
+3. **Install required tools:**
+   ```bash
+   brew install git python3
+   brew install --cask google-chrome chromedriver
+   ```
+4. **Clone the repository:**
+   ```bash
+   git clone https://github.com/ammargrowme/anki_converter.git
+   cd anki_converter
+   ```
+5. **Set up virtual environment & install dependencies:**
+   ```bash
+   chmod +x setup.sh
+   ./setup.sh
+   ```
+6. **Activate the virtual environment:**
+   ```bash
+   source .venv/bin/activate
+   ```
+7. **Create and configure `.env`:**
+   ```bash
+   touch .env
+   ```
+   Open `.env` in a text editor and paste:
+   ```ini
+   UC_EMAIL=you@ucalgary.ca
+   UC_PW=your_password
+   UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>
+   ```
+8. **Run the converter:**
+   ```bash
+   python export_ucalgary_anki.py
+   ```
+
+### Ubuntu/Debian Linux Full Setup
+
+Follow these steps from a clean Ubuntu/Debian system:
+
+1. **Open Terminal** (Ctrl+Alt+T).
+2. **Update packages and install prerequisites:**
+   ```bash
+   sudo apt update
+   sudo apt install -y git python3 python3-venv python3-pip wget
+   ```
+3. **Install Chrome:**
+   ```bash
+   wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+   sudo apt install -y ./google-chrome-stable_current_amd64.deb
+   ```
+4. **Install ChromeDriver:**
+   ```bash
+   sudo apt install -y chromium-chromedriver
+   ```
+5. **Clone repository & enter folder:**
+   ```bash
+   git clone https://github.com/ammargrowme/anki_converter.git
+   cd anki_converter
+   ```
+6. **Set up virtual environment & install dependencies:**
+   ```bash
+   chmod +x setup.sh
+   ./setup.sh
+   ```
+7. **Activate virtual environment:**
+   ```bash
+   source .venv/bin/activate
+   ```
+8. **Create and configure `.env`:**
+   ```bash
+   touch .env
+   ```
+   Edit `.env` and add:
+   ```ini
+   UC_EMAIL=you@ucalgary.ca
+   UC_PW=your_password
+   UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>
+   ```
+9. **Run the converter:**
+   ```bash
+   python export_ucalgary_anki.py
+   ```
+
+### Windows Full Setup
+
+Follow these steps from a clean Windows machine:
+
+1. **Install Git:** Download & run installer from https://git-scm.com/download/win
+2. **Install Python 3:** Download & install from https://www.python.org/downloads/windows/ (check “Add Python to PATH”)
+3. **Install Google Chrome:** Download & install from https://www.google.com/chrome/
+4. **Install ChromeDriver:**
+   - Visit https://chromedriver.chromium.org/downloads
+   - Download the version matching your Chrome
+   - Unzip and place `chromedriver.exe` in a folder on your PATH
+5. **Open PowerShell** (Win+X, then “Windows PowerShell”).
+6. **Clone repository & enter folder:**
+   ```powershell
+   git clone https://github.com/ammargrowme/anki_converter.git
+   cd anki_converter
+   ```
+7. **Set up virtual environment & install dependencies:**
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   pip install --upgrade pip
+   pip install -r requirements.txt
+   ```
+8. **Create and configure `.env`:**
+   ```powershell
+   New-Item .env -ItemType File
+   ```
+   Open `.env` in Notepad and paste:
+   ```ini
+   UC_EMAIL=you@ucalgary.ca
+   UC_PW=your_password
+   UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>
+   ```
+9. **Run the converter:**
+   ```powershell
+   python export_ucalgary_anki.py
+   ```
