@@ -227,6 +227,43 @@ Additional best practices to ensure smooth operation and maintenance.
 
 ---
 
+## Editing Files in Terminal Editors
+
+When using command-line editors to modify files (e.g., `.env`), note:
+
+### Nano (macOS/Linux)
+
+- Navigation: Use the arrow keys; mouse does not work.
+- To delete text:
+  - `Ctrl+K` cuts (deletes) the current line.
+  - `Ctrl+^` then arrow keys selects text; `Ctrl+K` cuts selection.
+- To paste: `Ctrl+U`.
+- To save (write out): `Ctrl+O`, then `Enter` to confirm.
+- To exit: `Ctrl+X`.
+- To cancel an action: `Ctrl+C`.
+
+### Vi/Vim (macOS/Linux)
+
+- Modes:
+  - **Normal mode** (navigate, delete)
+  - **Insert mode** (type text)
+- Enter Insert mode: press `i`.
+- Exit Insert mode: press `Esc`.
+- Navigation: arrow keys or `h` (left), `j` (down), `k` (up), `l` (right).
+- To delete:
+  - `dd` deletes the current line.
+  - `x` deletes the character under the cursor.
+- To save and exit: `:wq` then `Enter`.
+- To exit without saving: `:q!` then `Enter`.
+
+### Notepad (Windows)
+
+- Standard GUI editor; use mouse or arrow keys to navigate.
+- Save: `Ctrl+S`
+- Close: click "X" or press `Alt+F4`.
+
+---
+
 ## Full Setup Guides
 
 ### macOS Full Setup
