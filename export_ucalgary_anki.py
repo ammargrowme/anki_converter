@@ -796,6 +796,23 @@ def selenium_scrape_collection(collection_id, email, password, base_host):
 
         # Extract deck information
         decks_info = []
+        
+        # Also look for deck name elements to get proper titles
+        deck_name_elements = driver.find_elements(By.CSS_SELECTOR, "a.deck-name")
+        
+        # Create a mapping of deck IDs to deck names
+        deck_names_map = {}
+        for deck_name_elem in deck_name_elements:
+            deck_href = deck_name_elem.get_attribute("href")
+            if deck_href and "/deck/" in deck_href:
+                try:
+                    deck_id = deck_href.split("/deck/")[1].split("?")[0]
+                    deck_name = deck_name_elem.text.strip()
+                    if deck_name:
+                        deck_names_map[deck_id] = deck_name
+                except:
+                    continue
+        
         for link in deck_links:
             href = link.get_attribute("href")
             if not href:
@@ -811,8 +828,8 @@ def selenium_scrape_collection(collection_id, email, password, base_host):
                         0
                     ]
 
-                    # Get deck title
-                    deck_title = link.text.strip() or f"Deck {deck_id}"
+                    # Get deck title from the deck names map, or fall back to link text or default
+                    deck_title = deck_names_map.get(deck_id) or link.text.strip() or f"Deck {deck_id}"
 
                     decks_info.append(
                         {
@@ -874,9 +891,41 @@ def selenium_scrape_collection(collection_id, email, password, base_host):
         driver.quit()
 
 
+def detect_curriculum_pattern(collection_name, decks_info):
+    """
+    Detect if this is a curriculum-style collection (e.g., RIME 1.1.3, ASWD 2.1.5)
+    Returns (is_curriculum, base_name) where base_name is like "RIME" or "ASWD"
+    """
+    # Pattern to match curriculum format: NAME X.Y.Z where X, Y, Z are numbers
+    pattern = r'^([A-Z]+(?:\s+[A-Z]+)*)\s+(\d+)\.(\d+)\.(\d+)$'
+    match = re.match(pattern, collection_name.strip())
+    
+    if match:
+        base_name = match.group(1)  # e.g., "RIME" or "ASWD"
+        block_num = int(match.group(2))
+        unit_num = int(match.group(3))
+        week_num = int(match.group(4))
+        
+        print(f"🎓 Detected curriculum pattern: {base_name} Block {block_num}, Unit {unit_num}, Week {week_num}")
+        return True, base_name, block_num, unit_num, week_num
+    
+    return False, None, None, None, None
+
+
 def export_hierarchical_apkg(data, collection_name, decks_info, path):
     """
     Export cards with hierarchical deck structure:
+    
+    For curriculum collections (e.g., RIME 1.1.3):
+    Base Name (e.g., RIME)
+    └── Block X
+        └── Unit Y
+            └── Week Z
+                ├── Patient 1
+                ├── Patient 2
+                └── Patient 3
+    
+    For regular collections:
     Collection Name
     ├── Deck 1
     │   ├── Patient 1
@@ -1029,6 +1078,9 @@ hr#answer-divider { border: none; border-top: 1px solid #888; margin: 16px 0; }
         ],
     )
 
+    # Check if this is a curriculum-style collection
+    is_curriculum, base_name, block_num, unit_num, week_num = detect_curriculum_pattern(collection_name, decks_info)
+    
     # Group cards by deck and patient
     deck_structure = {}
 
@@ -1048,56 +1100,113 @@ hr#answer-divider { border: none; border-top: 1px solid #888; margin: 16px 0; }
     decks = []
     deck_id_counter = DECK_ID_BASE
 
-    for deck_title, patients in deck_structure.items():
-        for patient_info, cards in patients.items():
-            # Create deck name with hierarchy: "Collection::Deck::Patient"
-            hierarchical_name = f"{collection_name}::{deck_title}::{patient_info}"
+    if is_curriculum:
+        # For curriculum collections, create Base::Block::Unit::Week::Deck::Patient hierarchy
+        for deck_title, patients in deck_structure.items():
+            for patient_info, cards in patients.items():
+                # Create curriculum hierarchy: "BaseName::Block X::Unit Y::Week Z::DeckName::Patient"
+                hierarchical_name = f"{base_name}::Block {block_num}::Unit {unit_num}::Week {week_num}::{deck_title}::{patient_info}"
 
-            deck = genanki.Deck(deck_id_counter, hierarchical_name)
-            deck_id_counter += 1
+                deck = genanki.Deck(deck_id_counter, hierarchical_name)
+                deck_id_counter += 1
 
-            for card in cards:
-                multi_flag = card.get("multi", False)
-                multi = "1" if multi_flag else ""
-                sources_html = "".join(
-                    f"<li>{src}</li>" for src in card.get("sources", [])
-                )
-                model = text_model if card.get("freetext") else mcq_model
-
-                if card.get("freetext"):
-                    fields = [
-                        card["question"],
-                        card["answer"],
-                        card.get("explanation", ""),
-                    ]
-                else:
-                    fields = [
-                        card["question"],
-                        card["answer"],
-                        card.get("explanation", ""),
-                        card.get("score_text", ""),
-                        card.get("percent", ""),
-                        sources_html,
-                        multi,
-                        card["id"],
-                    ]
-
-                # Add comprehensive tags
-                tags = card.get("tags", []) + [
-                    f"Collection_{collection_name.replace(' ', '_')}",
-                    f"Deck_{deck_title.replace(' ', '_')}",
-                    f"Patient_{patient_info.replace(' ', '_')}",
-                ]
-
-                deck.add_note(
-                    genanki.Note(
-                        model=model,
-                        fields=fields,
-                        tags=tags,
+                for card in cards:
+                    multi_flag = card.get("multi", False)
+                    multi = "1" if multi_flag else ""
+                    sources_html = "".join(
+                        f"<li>{src}</li>" for src in card.get("sources", [])
                     )
-                )
+                    model = text_model if card.get("freetext") else mcq_model
 
-            decks.append(deck)
+                    if card.get("freetext"):
+                        fields = [
+                            card["question"],
+                            card["answer"],
+                            card.get("explanation", ""),
+                        ]
+                    else:
+                        fields = [
+                            card["question"],
+                            card["answer"],
+                            card.get("explanation", ""),
+                            card.get("score_text", ""),
+                            card.get("percent", ""),
+                            sources_html,
+                            multi,
+                            card["id"],
+                        ]
+
+                    # Add comprehensive tags for curriculum
+                    tags = card.get("tags", []) + [
+                        f"Curriculum_{base_name.replace(' ', '_')}",
+                        f"Block_{block_num}",
+                        f"Unit_{unit_num}",
+                        f"Week_{week_num}",
+                        f"Deck_{deck_title.replace(' ', '_')}",
+                        f"Patient_{patient_info.replace(' ', '_')}",
+                    ]
+
+                    deck.add_note(
+                        genanki.Note(
+                            model=model,
+                            fields=fields,
+                            tags=tags,
+                        )
+                    )
+
+                decks.append(deck)
+    else:
+        # For regular collections, use the existing Collection::Deck::Patient hierarchy
+        for deck_title, patients in deck_structure.items():
+            for patient_info, cards in patients.items():
+                # Create deck name with hierarchy: "Collection::Deck::Patient"
+                hierarchical_name = f"{collection_name}::{deck_title}::{patient_info}"
+
+                deck = genanki.Deck(deck_id_counter, hierarchical_name)
+                deck_id_counter += 1
+
+                for card in cards:
+                    multi_flag = card.get("multi", False)
+                    multi = "1" if multi_flag else ""
+                    sources_html = "".join(
+                        f"<li>{src}</li>" for src in card.get("sources", [])
+                    )
+                    model = text_model if card.get("freetext") else mcq_model
+
+                    if card.get("freetext"):
+                        fields = [
+                            card["question"],
+                            card["answer"],
+                            card.get("explanation", ""),
+                        ]
+                    else:
+                        fields = [
+                            card["question"],
+                            card["answer"],
+                            card.get("explanation", ""),
+                            card.get("score_text", ""),
+                            card.get("percent", ""),
+                            sources_html,
+                            multi,
+                            card["id"],
+                        ]
+
+                    # Add comprehensive tags
+                    tags = card.get("tags", []) + [
+                        f"Collection_{collection_name.replace(' ', '_')}",
+                        f"Deck_{deck_title.replace(' ', '_')}",
+                        f"Patient_{patient_info.replace(' ', '_')}",
+                    ]
+
+                    deck.add_note(
+                        genanki.Note(
+                            model=model,
+                            fields=fields,
+                            tags=tags,
+                        )
+                    )
+
+                decks.append(deck)
 
     # Create package with all decks
     package = genanki.Package(decks)
@@ -1107,11 +1216,22 @@ hr#answer-divider { border: none; border-top: 1px solid #888; margin: 16px 0; }
     print(f"📊 Created {len(decks)} sub-decks with hierarchical structure")
 
     # Print structure summary
-    print("📋 Deck Structure:")
-    for deck_title, patients in deck_structure.items():
-        print(f"  📚 {deck_title}")
-        for patient_info, cards in patients.items():
-            print(f"    👤 {patient_info} ({len(cards)} cards)")
+    if is_curriculum:
+        print("📋 Curriculum Deck Structure:")
+        print(f"  🎓 {base_name}")
+        print(f"    📚 Block {block_num}")
+        print(f"      📖 Unit {unit_num}")
+        print(f"        📅 Week {week_num}")
+        for deck_title, patients in deck_structure.items():
+            print(f"          � {deck_title}")
+            for patient_info, cards in patients.items():
+                print(f"            👤 {patient_info} ({len(cards)} cards)")
+    else:
+        print("📋 Deck Structure:")
+        for deck_title, patients in deck_structure.items():
+            print(f"  �📚 {deck_title}")
+            for patient_info, cards in patients.items():
+                print(f"    👤 {patient_info} ({len(cards)} cards)")
 
 
 def export_apkg(data, deck_name, path):

@@ -1,17 +1,6 @@
-# anki_converte- 🔄 **Multi-Patient Support**: Handles decks with multiple cards per patient
+# UCalgary Cards to Anki Converter
 
-- 📚 **Collection Support**: Convert entire collections with multiple decks into organized hierarchical Anki decks
-- 🏷️ **Smart Tagging**: Automatically tags cards by source deck for easy organization
-- 🎯 **Hierarchical Structure**:4. **Detect URL type automatically** (individual deck vs. collection)
-
-5. Log into the Cards site automatically
-6. **For collections**: Find all decks, extract patient information, and scrape each one with progress tracking
-7. **For individual decks**: Extract patient names and scrape all questions/answers from the deck
-8. **Open a "Save As" dialog** for you to choose where to save the `.apkg` file
-9. Generate an Anki deck file with hierarchical organization ready for import
-10. **Show a success popup** with import instructionss organized deck structure: Collection → Deck → Patient
-
-- 🔐 **Secure**: Saves credentials locally with proper encryption\*Repository:\*\* [https://github.com/ammargrowme/anki_converter.git](https://github.com/ammargrowme/anki_converter.git)
+**Repository:** [https://github.com/ammargrowme/anki_converter.git](https://github.com/ammargrowme/anki_converter.git)
 
 [![GitHub Repo stars](https://img.shields.io/github/stars/ammargrowme/anki_converter)](https://github.com/ammargrowme/anki_converter)
 
@@ -25,9 +14,12 @@ A command-line tool that logs into the University of Calgary Cards site, scrapes
 - 💾 **Modern GUI**: File dialogs for easy deck saving (with command-line fallback)
 - 📊 **Interactive Cards**: Preserves multiple-choice functionality in Anki
 - 🔄 **Multi-Patient Support**: Handles decks with multiple cards per patient
-- � **Collection Support**: Convert entire collections with multiple decks into organized Anki decks
+- 📚 **Collection Support**: Convert entire collections with multiple decks into organized hierarchical Anki decks
 - 🏷️ **Smart Tagging**: Automatically tags cards by source deck for easy organization
-- �🔐 **Secure**: Saves credentials locally with proper encryption
+- 🎯 **Hierarchical Structure**: Creates organized deck structure: Collection → Deck → Patient
+- 🎓 **Curriculum Pattern Detection**: Special handling for RIME-style collections (e.g., RIME 1.1.3 → Block::Unit::Week hierarchy)
+- 📝 **Proper Deck Names**: Extracts actual deck names (e.g., "Get to know SAWH", "SAWH what is it good for") instead of generic titles
+- 🔐 **Secure**: Saves credentials locally with proper encryption
 
 ---
 
@@ -383,20 +375,12 @@ https://cards.ucalgary.ca/collection/150
 **Collection Benefits:**
 
 - 📚 **One-click conversion**: Convert entire collections with multiple decks
-- �️ **Hierarchical organization**: Creates structure like "RIME 0.0.1::Details::Patient Name"
+- 🏗️ **Hierarchical organization**: Creates proper structure like "RIME::Block 0::Unit 0::Week 1::Get to know SAWH::Patient Name"
 - 📊 **Progress tracking**: See progress for each deck as it's processed
 - 🎯 **Comprehensive**: Get all cards from all decks in one organized Anki file
 - 👥 **Patient organization**: Automatically extracts and organizes cards by patient names
-
----
-
-<a id="expectations"></a>
-
-## Expectations
-
-- **Logs:** “Script started”, “Loading screen…”, “Logging in…”, “Logged in successfully”
-- **Progress:** Live “Scraping cards” bar
-- **Output:** **`Deck_<ID>.apkg`**
+- 📝 **Proper Deck Names**: Shows actual deck titles like "Get to know SAWH" and "SAWH what is it good for"
+- 🎓 **Curriculum Detection**: Automatically detects RIME-style collections for special hierarchical structure
 
 ---
 
