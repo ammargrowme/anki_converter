@@ -268,6 +268,11 @@ Follow these steps from a clean system:
    UC_PW=your_password
    UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>
    ```
+   7a. Open and edit `.env`:
+   ```bash
+   nano .env   # or vi .env
+   ```
+   Make sure to save changes before exiting (Ctrl+O, Enter, Ctrl+X in nano).
 8. **Run the converter:**
    ```bash
    python export_ucalgary_anki.py
@@ -316,6 +321,11 @@ Follow these steps from a clean Ubuntu/Debian system:
    UC_PW=your_password
    UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>
    ```
+   8a. Open and edit `.env`:
+   ```bash
+   nano .env   # or vi .env
+   ```
+   Make sure to save changes before exiting (Ctrl+O, Enter, Ctrl+X in nano).
 9. **Run the converter:**
    ```bash
    python export_ucalgary_anki.py
@@ -354,6 +364,10 @@ Follow these steps from a clean Windows machine:
    UC_EMAIL=you@ucalgary.ca
    UC_PW=your_password
    UC_BASE_URL=https://cards.ucalgary.ca/details/<DETAILS_ID>
+   ```
+   8a. Open `.env` for editing:
+   ```powershell
+   notepad .env
    ```
 9. **Run the converter:**
    ```powershell
