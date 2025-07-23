@@ -91,8 +91,8 @@ brew install git python3
 **Verify installation:**
 
 ```bash
-git --version   # should print 'git version ...'
-python3 --version  # should print 'Python 3.x.x'
+git --version
+python3 --version
 ```
 
 **Copy & Paste:**
@@ -104,7 +104,7 @@ brew install --cask google-chrome chromedriver
 **Verify installation:**
 
 ```bash
-which chromedriver  # should output path
+which chromedriver
 ```
 
 #### Clone & Setup Virtualenv
@@ -122,9 +122,6 @@ chmod +x setup.sh
 **Copy & Paste:**
 
 ```powershell
-# Git
-# Python 3 (Add to PATH)
-# Chrome & ChromeDriver (add to PATH)
 git clone https://github.com/ammargrowme/anki_converter.git ; cd anki_converter
 python -m venv .venv
 .\\.venv\\Scripts\\Activate.ps1
@@ -135,8 +132,8 @@ pip install -r requirements.txt
 **Verify installation:**
 
 ```powershell
-git --version   # should print 'git version ...'
-python --version  # should print 'Python 3.x.x'
+git --version
+python --version
 ```
 
 ---
@@ -160,10 +157,13 @@ On first run, the script will interactively prompt you for your University of Ca
   5. You are then prompted for the **cards URL**, after which the deck is generated.
 
 - **Subsequent runs**:
+
   1. Execute `python export_ucalgary_anki.py`.
   2. The script loads credentials from `config.json`.
   3. You are prompted for the **cards URL**.
   4. If login fails (credentials changed), you will be re-prompted (up to 3 attempts) and `config.json` updated.
+
+- **Credentials & URL Prompt**: When you run `python export_ucalgary_anki.py`, you will be prompted first for your University of Calgary email (username) and password on the very first run. After successful login (up to 3 attempts), you will then be prompted to enter the cards URL you wish to convert. Your credentials are securely saved in `config.json` for all future runs, so subsequent executions only require the URL.
 
 (No CLI flags or `.env` file edits are required.)
 
@@ -206,6 +206,40 @@ Common issues and their fixes when installing dependencies or running the script
 - Virtual environment errors → ensure **`python3 -m venv .venv`** runs and activate correctly.
 - `.env` file parse errors → ensure no BOM or extra whitespace.
 - Network timeouts → check firewall or proxy settings.
+
+#### Untrusted Package Warning
+
+If you see a warning about unverified or untrusted packages when running scripts:
+
+- **macOS**  
+  Run:
+
+  ```bash
+  xattr -d com.apple.quarantine path/to/file
+  ```
+
+  to remove the quarantine flag from the downloaded script.
+
+- **Windows (PowerShell)**  
+  Run:
+
+  ```powershell
+  Unblock-File -Path .\setup.sh
+  ```
+
+  to unblock the script before execution.
+
+- **Linux**  
+  Ensure the script is executable and trusted:
+
+  ```bash
+  chmod +x setup.sh
+  ```
+
+  and verify its source before running.
+
+- **General Guidelines**  
+  Always verify scripts from trusted repositories, review any third‑party code before execution, and consider checking checksums or GPG signatures if available.
 
 ---
 
@@ -293,8 +327,8 @@ brew install git python3
 **Verify installation:**
 
 ```bash
-git --version   # should print 'git version ...'
-python3 --version  # should print 'Python 3.x.x'
+git --version
+python3 --version
 ```
 
 **Copy & Paste:**
@@ -306,7 +340,7 @@ brew install --cask google-chrome chromedriver
 **Verify installation:**
 
 ```bash
-which chromedriver  # should output path
+which chromedriver
 ```
 
 **4. Clone the repository:**
@@ -363,8 +397,8 @@ sudo apt install -y git python3 python3-venv python3-pip wget
 **Verify installation:**
 
 ```bash
-git --version   # should print 'git version ...'
-python3 --version  # should print 'Python 3.x.x'
+git --version
+python3 --version
 ```
 
 **3. Install Chrome:**
@@ -387,7 +421,7 @@ sudo apt install -y chromium-chromedriver
 **Verify installation:**
 
 ```bash
-which chromedriver  # should output path
+which chromedriver
 ```
 
 **5. Clone repository & enter folder:**
@@ -447,7 +481,6 @@ Follow these steps from a clean Windows machine:
 **Copy & Paste:**
 
 ```powershell
-# Add to PATH (example):
 $env:PATH += ";C:\path\to\chromedriver"
 ```
 
@@ -476,8 +509,8 @@ pip install -r requirements.txt
 **Verify installation:**
 
 ```powershell
-git --version   # should print 'git version ...'
-python --version  # should print 'Python 3.x.x'
+git --version
+python --version
 ```
 
 **9. Run the converter and follow interactive prompts:**
