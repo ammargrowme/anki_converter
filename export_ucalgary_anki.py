@@ -98,25 +98,52 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
         selenium_login(driver, email, password, base_host)
         print("Logged in successfully")
 
-        # If a details URL is provided, extract all card IDs via the patient rel redirect
+        # If a details URL is provided, convert it to printdeck URL to get all cards
         if details_url:
-            driver.get(details_url)
+            # Extract deck_id from details URL and use printdeck approach
+            parsed_details = urlparse(details_url)
+            try:
+                deck_id_from_url = parsed_details.path.split("/details/")[1]
+            except (IndexError, AttributeError):
+                deck_id_from_url = "unknown"
+            
+            # Use printdeck page to collect all cards for the deck (including multiple per question)
+            printdeck_url = f"{base_host}/printdeck/{deck_id_from_url}?bag_id={bag_id}"
+            driver.get(printdeck_url)
             time.sleep(2)
-            # Find all patient elements with a rel attribute
-            patient_elems = driver.find_elements(By.CSS_SELECTOR, ".patient[rel]")
-            # Extract rel attributes before navigation to avoid stale element references
-            rels = [pe.get_attribute("rel") for pe in patient_elems]
+            
+            if "Error 403" in driver.title:
+                driver.save_screenshot(f"deck_{deck_id_from_url}_403.png")
+                sys.exit("Access denied to printdeck page")
+            
+            # Find all submit buttons with solution IDs on the printdeck page
+            submit_buttons = driver.find_elements(
+                By.CSS_SELECTOR, "div.submit button[rel*='/solution/']"
+            )
+            
+            if not submit_buttons:
+                sys.exit("No submit buttons found on printdeck page; check selectors or page structure.")
+            
+            # Extract card IDs from solution button rel attributes
+            card_ids = []
+            for button in submit_buttons:
+                rel = button.get_attribute("rel")
+                # Extract card ID from rel like "/solution/17623644/"
+                m = re.search(r"/solution/(\d+)/", rel)
+                if m:
+                    cid = m.group(1)
+                    if cid not in card_ids:
+                        card_ids.append(cid)
+            
+            if not card_ids:
+                sys.exit("No card IDs found from submit buttons; check page structure.")
+            
             cards = []
-            for rel in tqdm(rels, desc="Scraping cards"):
-                patient_url = f"{base_host}/patient/{rel}?bag_id={bag_id}"
-                driver.get(patient_url)
+            for cid in tqdm(card_ids, desc="Scraping cards"):
+                # Build card URL without bag_id parameter to avoid 403 errors on card pages
+                card_url = f"{base_host}/card/{cid}"
+                driver.get(card_url)
                 time.sleep(2)
-                # Selenium follows the redirect; grab the final card URL
-                card_page_url = driver.current_url
-                m = re.search(r"/card/(\d+)", card_page_url)
-                if not m:
-                    continue
-                cid = m.group(1)
 
                 # Now scrape the card page just like before
                 # background parts (paragraphs in card)
@@ -284,30 +311,36 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                 )
             return cards
         else:
-            # Single deck ID provided directly
-            deck_ids = [deck_id]
-
-            # 3) COLLECT CARD IDs FROM THE SINGLE DECK
+            # Single deck ID provided directly - use printdeck page to scrape all questions directly
+            printdeck_url = f"{base_host}/printdeck/{deck_id}?bag_id={bag_id}"
+            driver.get(printdeck_url)
+            time.sleep(2)
+            
+            if "Error 403" in driver.title:
+                driver.save_screenshot(f"deck_{deck_id}_403.png")
+                sys.exit("Access denied to printdeck page")
+            
+            # Find all submit buttons with solution IDs on the printdeck page
+            submit_buttons = driver.find_elements(
+                By.CSS_SELECTOR, "div.submit button[rel*='/solution/']"
+            )
+            
+            if not submit_buttons:
+                sys.exit("No submit buttons found on printdeck page; check selectors or page structure.")
+            
+            # Extract card IDs from solution button rel attributes
             card_ids = []
-            for did in deck_ids:
-                sub_deck_url = f"{base_host}/deck/{did}"
-                driver.get(sub_deck_url)
-                time.sleep(2)
-                if "Error 403" in driver.title:
-                    driver.save_screenshot(f"deck_{did}_403.png")
-                    continue
-                link_elements = driver.find_elements(
-                    By.CSS_SELECTOR, "a[href*='/card/']"
-                )
-                for link in link_elements:
-                    href = link.get_attribute("href")
-                    m = re.search(r"/card/(\d+)", href)
-                    if m:
-                        cid = m.group(1)
-                        if cid not in card_ids:
-                            card_ids.append(cid)
+            for button in submit_buttons:
+                rel = button.get_attribute("rel")
+                # Extract card ID from rel like "/solution/17623644/"
+                m = re.search(r"/solution/(\d+)/", rel)
+                if m:
+                    cid = m.group(1)
+                    if cid not in card_ids:
+                        card_ids.append(cid)
+            
             if not card_ids:
-                sys.exit("No cards to export; check selectors or page structure.")
+                sys.exit("No card IDs found from submit buttons; check page structure.")
 
             cards = []
             for cid in tqdm(card_ids, desc="Scraping cards"):
