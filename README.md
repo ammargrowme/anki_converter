@@ -113,6 +113,10 @@ pip install -r requirements.txt
 
 ## Installation
 
+Install system dependencies as needed (see Requirements by OS).
+
+---
+
 ## Configuration
 
 Provide your University of Calgary credentials and the target cards URL so the script can authenticate and fetch your cards.
@@ -120,6 +124,7 @@ Provide your University of Calgary credentials and the target cards URL so the s
 #### Creating the .env file
 
 1. Open your terminal or command prompt.
+
 2. Change directory to the cloned repo folder:
    ```bash
    cd anki_converter
