@@ -239,9 +239,19 @@ fi
 # Create activation helper script
 cat > activate.sh << 'EOF'
 #!/bin/bash
+# This script should be sourced, not executed directly
+# Usage: source activate.sh
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    echo "⚠️  This script should be sourced, not executed directly!"
+    echo "✅ Use: source activate.sh"
+    echo "   or: . activate.sh"
+    exit 1
+fi
+
 source .venv/bin/activate
 echo "✅ Virtual environment activated"
-echo "� Run: python export_ucalgary_anki.py"
+echo "🚀 Run: python export_ucalgary_anki.py"
 EOF
 chmod +x activate.sh
 
@@ -286,7 +296,11 @@ if [[ $OS == "windows" ]]; then
     echo "   Or manually:      .venv\\Scripts\\activate"
 else
     echo "   macOS/Linux:  source .venv/bin/activate"
-    echo "               or run: ./activate.sh"
+    echo "               or: source activate.sh"
+    echo "               or: . activate.sh"
+    echo ""
+    echo "   ⚠️  NOTE: Use 'source' or '.' - do NOT run './activate.sh'"
+    echo "       Running with './' won't activate the environment in your current shell"
 fi
 echo ""
 echo "2️⃣  Run the converter:"
