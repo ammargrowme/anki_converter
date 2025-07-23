@@ -524,6 +524,8 @@ def export_apkg(data, deck_name, path):
 .correct { color: green !important; font-weight: bold; }
 .incorrect { color: red !important; }
 hr#answer-divider { border: none; border-top: 1px solid #888; margin: 16px 0; }
+#answer-section { color: white; }
+#explanation { color: white; }
 """,
         templates=[
             {
@@ -631,10 +633,10 @@ hr#answer-divider { border: none; border-top: 1px solid #888; margin: 16px 0; }
 {{Front}}
 <hr id="answer-divider">
 <div id="answer-section">
-  <b>Answer:</b> {{CorrectAnswer}}
+  <b>Answer:</b> <span style="color:white;">{{CorrectAnswer}}</span>
 </div>
 {{#Explanation}}
-<div id="explanation"><b>Explanation:</b> {{Explanation}}</div>
+<div id="explanation"><b>Explanation:</b> <span style="color:white;">{{Explanation}}</span></div>
 {{/Explanation}}
 """,
             }
@@ -764,8 +766,10 @@ def main():
     else:
         deck_id = bag_id or "unknown"
     deck_name = f"Deck_{deck_id}"
-    os.makedirs(deck_name, exist_ok=True)
-    output_path = os.path.join(deck_name, f"{deck_name}.apkg")
+    # Prompt user for output path without GUI
+    default_filename = f"{deck_name}.apkg"
+    user_input = input(f"Enter path to save Anki deck [{default_filename}]: ").strip()
+    output_path = user_input if user_input else default_filename
     export_apkg(cards, deck_name, output_path)
 
 

@@ -15,9 +15,4 @@ echo "✅ Virtualenv created and dependencies installed."
 echo "👉 To start using the converter:"
 echo "   source .venv/bin/activate"
 
-# 4) Clear macOS Gatekeeper quarantine flags (macOS only)
-if command -v xattr >/dev/null 2>&1; then
-  echo "🔓 Clearing macOS Gatekeeper quarantine flags..."
-  xattr -dr com.apple.quarantine "$(pwd)"
-  echo "✅ Quarantine flags cleared."
-fi
+echo "👉 After setup, run: python export_ucalgary_anki.py and follow the on-screen prompts to log in, choose your deck URL, and specify where to save the .apkg file."

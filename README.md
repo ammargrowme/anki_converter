@@ -165,19 +165,21 @@ On first run, the script will interactively prompt you for your University of Ca
 
 - **Credentials & URL Prompt**: When you run `python export_ucalgary_anki.py`, you will be prompted first for your University of Calgary email (username) and password on the very first run. After successful login (up to 3 attempts), you will then be prompted to enter the cards URL you wish to convert. Your credentials are securely saved in `config.json` for all future runs, so subsequent executions only require the URL.
 
-(No CLI flags or `.env` file edits are required.)
+- **Save Location Prompt**: After entering the cards URL, you will be prompted to confirm or change the output filename and path (default is `Deck_<ID>.apkg` in the project root). Enter a new path if desired.
 
 ---
 
 ## Usage
 
-Simply run:
-
 ```bash
 python export_ucalgary_anki.py
 ```
 
-and follow the on‑screen prompts. No flags or environment files are needed.
+> Follow the on-screen prompts in order:
+>
+> 1. (First run only) Enter your email and password.
+> 2. Enter the target cards URL.
+> 3. Confirm or specify the save location for the generated `.apkg` file.
 
 ---
 
@@ -204,8 +206,8 @@ Common issues and their fixes when installing dependencies or running the script
 - Internet & permissions
 - Permission denied errors when running scripts → use **`chmod +x`**.
 - Virtual environment errors → ensure **`python3 -m venv .venv`** runs and activate correctly.
-- `.env` file parse errors → ensure no BOM or extra whitespace.
 - Network timeouts → check firewall or proxy settings.
+- Save location errors → ensure the path you enter when prompted is valid and you have write permissions.
 
 #### Untrusted Package Warning
 
@@ -249,7 +251,6 @@ Additional best practices to ensure smooth operation and maintenance.
 
 - Check **`python3 --version`** / **`pip --version`**
 - Keep Chrome/ChromeDriver in sync
-- No extra spaces in `.env`
 - Ensure active internet
 - Scripts executable (**`chmod +x setup.sh`**)
 
