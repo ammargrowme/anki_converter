@@ -28,7 +28,37 @@ Converts UofC Cards into an Anki `.apkg` deck using Selenium + Genanki.
 
 ## Installation
 
-Install required system packages and set up the project environment across supported platforms.
+## Requirements by OS
+
+### macOS
+
+- Homebrew
+- Git
+- Python 3
+- Chrome
+- ChromeDriver
+
+Refer to installation commands below in [Install Homebrew & Dependencies](#install-homebrew--dependencies) and [Clone & Setup Virtualenv](#clone--setup-virtualenv).
+
+### Ubuntu/Debian Linux
+
+- apt package manager
+- Git
+- Python 3
+- pip
+- Chrome
+- ChromeDriver
+
+Refer to installation commands below in [Install Homebrew & Dependencies](#install-homebrew--dependencies) and [Clone & Setup Virtualenv](#clone--setup-virtualenv).
+
+### Windows
+
+- Git installer
+- Python installer
+- Chrome installer
+- ChromeDriver installer
+
+Refer to the Windows setup instructions in [Windows (PowerShell)](#windows-powershell).
 
 ### macOS / Linux
 
@@ -160,6 +190,10 @@ Common issues and their fixes when installing dependencies or running the script
 - Hidden browser → comment out `--headless`
 - Verify PATH → `which chromedriver` / `where chromedriver`
 - Internet & permissions
+- Permission denied errors when running scripts → use `chmod +x`.
+- Virtual environment errors → ensure `python3 -m venv .venv` runs and activate correctly.
+- `.env` file parse errors → ensure no BOM or extra whitespace.
+- Network timeouts → check firewall or proxy settings.
 
 ---
 
