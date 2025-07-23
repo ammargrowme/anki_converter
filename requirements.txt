@@ -17,7 +17,10 @@ colorama>=0.4.6
 
 # GUI file dialogs (tkinter is built-in with Python)
 # Note: tkinter comes with Python by default on most systems
-# If missing on Linux: sudo apt install python3-tk
+# The setup script automatically installs GUI support:
+#   - macOS: brew install python-tk (automatic)
+#   - Linux: sudo apt install python3-tk (with prompt)
+#   - Windows: included with Python (usually works by default)
 
 # Environment and configuration
 python-dotenv>=1.0.0

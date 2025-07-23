@@ -2,19 +2,45 @@
 
 **Repository:** [https://github.com/ammargrowme/anki_converter.git](https://github.com/ammargrowme/anki_converter.git)
 
-[![GitHub Repo stars](https://img.shields.io/github/stars/ammargrowme/anki_converter)](https://git## Expectations
+[![GitHub Repo stars](https://img.shields.io/github/stars/ammargrowme/anki_converter)](https://github.com/ammargrowme/anki_converter)
+
+A command-line tool that logs into the University of Calgary Cards site, scrapes question-and-answer cards, and generates a ready-to-import Anki `.apkg` deck using Selenium and Genanki.
+
+**Features:**
+
+- ✨ **Automatic Setup**: Installs all dependencies including Chrome, Python packages, and GUI support
+- 🔧 **Cross-Platform**: Works on macOS, Linux, and Windows with automatic OS detection
+- 🎯 **Smart Installation**: Automatically installs missing components (Homebrew, Git, Chrome, tkinter)
+- 💾 **Modern GUI**: File dialogs for easy deck saving (with command-line fallback)
+- 📊 **Interactive Cards**: Preserves multiple-choice functionality in Anki
+- 🔄 **Multi-Patient Support**: Handles decks with multiple cards per patient
+- 🔐 **Secure**: Saves credentials locally with proper encryption
+
+---
+
+## Expectations
 
 **Console Output (what you'll see when it works):**
 
 ```
 🚀 Setting up UCalgary Anki Converter...
-✅ Python 3.9.7 found
+✅ Homebrew found
+✅ Python 3.13.5 found
 ✅ pip found
 ✅ Git found
 ✅ Google Chrome found
 📦 Creating new virtual environment...
+✅ GUI support successfully installed!
 ✅ Dependencies installed successfully
-🎉 Setup completed successfully!
+🔍 Final System Verification:
+✅ Python: Python 3.13.5
+✅ Virtual Environment: Active
+✅ Selenium: Available
+✅ Genanki: Available
+✅ GUI Support: Available
+✅ Google Chrome: Found
+✅ Main Script: Ready
+🎉 System is fully ready!
 
 Loading screen...
 Logging in...
@@ -24,7 +50,7 @@ Scraping cards: 100%|████████████| 6/6 [00:15<00:00, 2.5
 📁 Save Location
 [GUI file dialog opens for you to choose save location]
 
-[+] APKG → C:\Users\YourName\Desktop\Deck_1261.apkg
+[+] APKG → /Users/YourName/Desktop/Deck_1261.apkg
 ✅ Success! Created Anki deck with 6 cards.
 [Success popup appears with import instructions]
 ```
@@ -62,21 +88,15 @@ Scraping cards: 100%|████████████| 6/6 [00:15<00:00, 2.5
 
 **Time Expectations:**
 
+**Time Expectations:**
+
 - Setup: 2-5 minutes (one time only)
 - Per deck conversion: 30 seconds to 5 minutes depending on deck size
-- Each card takes ~2-3 seconds to processom/ammargrowme/anki_converter)
-
-A command-line tool that logs into the University of Calgary Cards site, scrapes question-and-answer cards, and generates a ready-to-import Anki `.apkg` deck using Selenium and Genanki.
-
-**Features:**
-
-- Scrapes multiple-choice and free-text questions
-- Handles multi-patient decks with multiple cards per patient
-- Exports interactive Anki cards with clickable options
-- Preserves question context, explanations, and scoring
-- Automatically handles authentication and session management
+- Each card takes ~2-3 seconds to process
 
 ---
+
+## Table of Contents
 
 ## Table of Contents
 
@@ -415,6 +435,32 @@ chmod +x setup.sh
 pip install -r requirements.txt --force-reinstall
 ```
 
+**❌ "GUI file dialogs not available" or No file dialog appears**
+
+_macOS:_
+
+```bash
+# Solution: Install GUI support automatically
+./setup.sh  # The setup script will handle this
+
+# Or manually:
+brew install python-tk
+```
+
+_Linux (Ubuntu/Debian):_
+
+```bash
+# Solution: Install tkinter
+sudo apt install python3-tk
+./setup.sh  # Re-run setup to verify
+```
+
+_Windows:_
+
+- GUI support should work by default
+- If not, reinstall Python with "Add Python to PATH" checked
+- Make sure to check "tk/tkinter" during installation
+
 ### Advanced Troubleshooting
 
 **See what the browser is doing (Debug Mode):**
@@ -535,7 +581,26 @@ google-chrome --version  # Linux
    - Type "Terminal" and press Enter
    - A black window will open - don't worry, this is normal!
 
-2. **Copy and paste these commands one at a time:**
+2. **Get the project and run setup (it installs everything automatically):**
+
+   ```bash
+   git clone https://github.com/ammargrowme/anki_converter.git
+   cd anki_converter
+   ./setup.sh
+   ```
+
+   **✨ The setup script will automatically install:**
+
+   - Homebrew (if missing)
+   - Git (if missing)
+   - Google Chrome (if missing)
+   - Python GUI support (tkinter)
+   - All Python dependencies
+   - Virtual environment setup
+
+   _This might take 5-15 minutes depending on what needs to be installed_
+
+3. **Alternative: Manual Installation (if automatic setup doesn't work):**
 
    **Install Homebrew (package manager):**
 
@@ -557,7 +622,7 @@ google-chrome --version  # Linux
    brew install --cask google-chrome
    ```
 
-3. **Get the project and set it up:**
+   **Then get the project and set it up:**
 
    ```bash
    git clone https://github.com/ammargrowme/anki_converter.git
@@ -565,12 +630,13 @@ google-chrome --version  # Linux
    ./setup.sh
    ```
 
-4. **The setup script will guide you through the rest!**
-
-5. **When setup is complete, run:**
+4. **When setup completes successfully, run:**
    ```bash
+   source activate.sh
    python export_ucalgary_anki.py
    ```
+
+**💡 Tip:** The automatic setup (step 2) is recommended as it handles everything for you!
 
 ---
 

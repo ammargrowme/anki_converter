@@ -25,6 +25,31 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# macOS-specific: Check and install Homebrew if needed
+if [[ $OS == "macos" ]]; then
+    if ! command_exists brew; then
+        echo "📦 Homebrew not found. Installing Homebrew..."
+        echo "   This will make installing dependencies much easier!"
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        
+        # Add Homebrew to PATH for this session
+        if [[ -f "/opt/homebrew/bin/brew" ]]; then
+            export PATH="/opt/homebrew/bin:$PATH"
+        elif [[ -f "/usr/local/bin/brew" ]]; then
+            export PATH="/usr/local/bin:$PATH"
+        fi
+        
+        if command_exists brew; then
+            echo "✅ Homebrew installed successfully"
+        else
+            echo "⚠️  Homebrew installation may have failed"
+            echo "   You may need to restart Terminal and re-run this script"
+        fi
+    else
+        echo "✅ Homebrew found"
+    fi
+fi
+
 # Check for required system dependencies
 echo "📋 Checking system requirements..."
 
@@ -61,11 +86,17 @@ elif command_exists pip; then
 else
     echo "❌ ERROR: pip not found. Installing pip..."
     if [[ $OS == "linux" ]]; then
+        echo "   Installing pip via apt..."
         sudo apt update && sudo apt install -y python3-pip
     elif [[ $OS == "macos" ]]; then
+        echo "   Installing pip..."
+        if command_exists brew; then
+            echo "   Using Homebrew to ensure pip is available..."
+            brew install python3 2>/dev/null || true
+        fi
         $PYTHON_CMD -m ensurepip --upgrade
     else
-        echo "Please install pip manually: https://pip.pypa.io/en/stable/installation/"
+        echo "   Please install pip manually: https://pip.pypa.io/en/stable/installation/"
         exit 1
     fi
     PIP_CMD="pip3"
@@ -75,17 +106,40 @@ echo "✅ pip found"
 
 # Check Git
 if ! command_exists git; then
-    echo "❌ ERROR: Git not found. Please install Git first."
+    echo "❌ ERROR: Git not found. Installing Git..."
     case $OS in
         "linux")
-            echo "   Run: sudo apt install git"
+            echo "   Installing Git via apt..."
+            if sudo apt update && sudo apt install -y git; then
+                echo "✅ Git installed successfully"
+            else
+                echo "   ❌ Failed to install Git automatically"
+                echo "   Please run: sudo apt install git"
+                exit 1
+            fi
             ;;
         "macos")
-            echo "   Run: brew install git"
-            echo "   Or install Xcode Command Line Tools"
+            if command_exists brew; then
+                echo "   Installing Git via Homebrew..."
+                if brew install git; then
+                    echo "✅ Git installed successfully"
+                else
+                    echo "   ❌ Failed to install Git via Homebrew"
+                    echo "   Try: xcode-select --install"
+                    exit 1
+                fi
+            else
+                echo "   Installing Xcode Command Line Tools (includes Git)..."
+                echo "   A dialog will appear - click 'Install'"
+                xcode-select --install
+                echo "   After installation completes, re-run this script"
+                exit 0
+            fi
             ;;
         "windows")
-            echo "   Download from: https://git-scm.com/download/win"
+            echo "   Please download Git from: https://git-scm.com/download/win"
+            echo "   After installation, re-run this script"
+            exit 1
             ;;
     esac
     exit 1
@@ -106,8 +160,49 @@ fi
 if [[ $CHROME_FOUND == false ]]; then
     echo "⚠️  WARNING: Google Chrome not detected."
     echo "   The script requires Chrome for web automation."
-    echo "   Download from: https://www.google.com/chrome/"
-    echo "   You can continue setup, but install Chrome before running the converter."
+    
+    # Attempt automatic installation
+    case $OS in
+        "macos")
+            if command_exists brew; then
+                echo "   Attempting to install Chrome via Homebrew..."
+                if brew install --cask google-chrome 2>/dev/null; then
+                    echo "✅ Google Chrome installed successfully!"
+                    CHROME_FOUND=true
+                else
+                    echo "   ❌ Automatic installation failed"
+                    echo "   Download manually from: https://www.google.com/chrome/"
+                fi
+            else
+                echo "   Download from: https://www.google.com/chrome/"
+            fi
+            ;;
+        "linux")
+            echo "   Attempting to install Chrome via package manager..."
+            if command_exists apt; then
+                # Add Google's APT repository and install Chrome
+                if wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add - 2>/dev/null && \
+                   echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list >/dev/null && \
+                   sudo apt update 2>/dev/null && \
+                   sudo apt install -y google-chrome-stable 2>/dev/null; then
+                    echo "✅ Google Chrome installed successfully!"
+                    CHROME_FOUND=true
+                else
+                    echo "   ❌ Automatic installation failed"
+                    echo "   Download from: https://www.google.com/chrome/"
+                fi
+            else
+                echo "   Download from: https://www.google.com/chrome/"
+            fi
+            ;;
+        "windows")
+            echo "   Download from: https://www.google.com/chrome/"
+            ;;
+    esac
+    
+    if [[ $CHROME_FOUND == false ]]; then
+        echo "   You can continue setup, but install Chrome before running the converter."
+    fi
 else
     echo "✅ Google Chrome found"
 fi
@@ -228,8 +323,24 @@ else
         echo "   sudo apt install python3-tk"
         echo "   Then re-run this setup script"
     elif [[ $OS == "macos" ]]; then
-        echo "   GUI support should be available on macOS by default"
-        echo "   You may need to reinstall Python with GUI support"
+        echo "   Attempting to install GUI support for macOS..."
+        if command_exists brew; then
+            echo "   Installing python-tk via Homebrew..."
+            brew install python-tk 2>/dev/null || true
+            # Test again after installation
+            if python -c "import tkinter" 2>/dev/null; then
+                echo "✅ GUI support successfully installed!"
+                GUI_SUPPORT=true
+            else
+                echo "   ⚠️  Could not install GUI support automatically"
+                echo "   Try: brew install python-tk"
+                echo "   Or reinstall Python with GUI support"
+            fi
+        else
+            echo "   GUI support should be available on macOS by default"
+            echo "   You may need to reinstall Python with GUI support"
+            echo "   Or install Homebrew and run: brew install python-tk"
+        fi
     elif [[ $OS == "windows" ]]; then
         echo "   GUI support should be available on Windows by default"
         echo "   You may need to reinstall Python with full features"
@@ -328,6 +439,76 @@ echo "   • Virtual environment isolates dependencies"
 if [[ $GUI_SUPPORT == true ]]; then
     echo "   • GUI file dialogs provide secure file selection"
 fi
+echo ""
+
+# Final comprehensive system check
+echo "🔍 Final System Verification:"
+echo "================================================"
+
+# Check all critical components
+SYSTEM_READY=true
+
+# Check Python
+if python --version >/dev/null 2>&1; then
+    echo "✅ Python: $(python --version 2>&1)"
+else
+    echo "❌ Python: Not working"
+    SYSTEM_READY=false
+fi
+
+# Check virtual environment
+if [[ -n "$VIRTUAL_ENV" ]]; then
+    echo "✅ Virtual Environment: Active ($VIRTUAL_ENV)"
+else
+    echo "❌ Virtual Environment: Not active"
+    SYSTEM_READY=false
+fi
+
+# Check critical packages
+if python -c "import selenium" 2>/dev/null; then
+    echo "✅ Selenium: Available"
+else
+    echo "❌ Selenium: Missing"
+    SYSTEM_READY=false
+fi
+
+if python -c "import genanki" 2>/dev/null; then
+    echo "✅ Genanki: Available"
+else
+    echo "❌ Genanki: Missing"
+    SYSTEM_READY=false
+fi
+
+# Check GUI support
+if python -c "import tkinter" 2>/dev/null; then
+    echo "✅ GUI Support: Available"
+else
+    echo "⚠️  GUI Support: Command line only"
+fi
+
+# Check Chrome
+if [[ $CHROME_FOUND == true ]]; then
+    echo "✅ Google Chrome: Found"
+else
+    echo "⚠️  Google Chrome: Not found (install before running)"
+fi
+
+# Check main script
+if [[ -f "export_ucalgary_anki.py" ]]; then
+    echo "✅ Main Script: Ready"
+else
+    echo "❌ Main Script: Missing"
+    SYSTEM_READY=false
+fi
+
+echo "================================================"
+
+if [[ $SYSTEM_READY == true ]]; then
+    echo "🎉 System is fully ready!"
+else
+    echo "⚠️  System has some issues - check the items marked with ❌ above"
+fi
+
 echo ""
 if [[ $CHROME_FOUND == false ]]; then
     echo "⚠️  REMINDER: Install Google Chrome before running the converter"
