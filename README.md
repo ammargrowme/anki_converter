@@ -1,6 +1,17 @@
-# anki_converter
+# anki_converte- 🔄 **Multi-Patient Support**: Handles decks with multiple cards per patient
 
-**Repository:** [https://github.com/ammargrowme/anki_converter.git](https://github.com/ammargrowme/anki_converter.git)
+- 📚 **Collection Support**: Convert entire collections with multiple decks into organized hierarchical Anki decks
+- 🏷️ **Smart Tagging**: Automatically tags cards by source deck for easy organization
+- 🎯 **Hierarchical Structure**:4. **Detect URL type automatically** (individual deck vs. collection)
+
+5. Log into the Cards site automatically
+6. **For collections**: Find all decks, extract patient information, and scrape each one with progress tracking
+7. **For individual decks**: Extract patient names and scrape all questions/answers from the deck
+8. **Open a "Save As" dialog** for you to choose where to save the `.apkg` file
+9. Generate an Anki deck file with hierarchical organization ready for import
+10. **Show a success popup** with import instructionss organized deck structure: Collection → Deck → Patient
+
+- 🔐 **Secure**: Saves credentials locally with proper encryption\*Repository:\*\* [https://github.com/ammargrowme/anki_converter.git](https://github.com/ammargrowme/anki_converter.git)
 
 [![GitHub Repo stars](https://img.shields.io/github/stars/ammargrowme/anki_converter)](https://github.com/ammargrowme/anki_converter)
 
@@ -14,7 +25,9 @@ A command-line tool that logs into the University of Calgary Cards site, scrapes
 - 💾 **Modern GUI**: File dialogs for easy deck saving (with command-line fallback)
 - 📊 **Interactive Cards**: Preserves multiple-choice functionality in Anki
 - 🔄 **Multi-Patient Support**: Handles decks with multiple cards per patient
-- 🔐 **Secure**: Saves credentials locally with proper encryption
+- � **Collection Support**: Convert entire collections with multiple decks into organized Anki decks
+- 🏷️ **Smart Tagging**: Automatically tags cards by source deck for easy organization
+- �🔐 **Secure**: Saves credentials locally with proper encryption
 
 ---
 
@@ -88,15 +101,11 @@ Scraping cards: 100%|████████████| 6/6 [00:15<00:00, 2.5
 
 **Time Expectations:**
 
-**Time Expectations:**
-
 - Setup: 2-5 minutes (one time only)
 - Per deck conversion: 30 seconds to 5 minutes depending on deck size
 - Each card takes ~2-3 seconds to process
 
 ---
-
-## Table of Contents
 
 ## Table of Contents
 
@@ -210,9 +219,10 @@ Scraping cards: 100%|████████████| 6/6 [00:15<00:00, 2.5
 ### What Happens Next:
 
 1. The script asks for your UCalgary email and password (saved securely)
-2. Paste your Cards deck URL when prompted
-3. **A "Save As" dialog will open** - choose where to save your Anki deck file (just like saving any file!)
-4. Import the `.apkg` file into Anki: **File → Import → Select your file**
+2. **Paste your Cards deck or collection URL** when prompted
+3. **For collections**: Watch as it finds and processes each deck automatically
+4. **A "Save As" dialog will open** - choose where to save your Anki deck file (just like saving any file!)
+5. Import the `.apkg` file into Anki: **File → Import → Select your file**
 
 **✨ New GUI Features:**
 
@@ -325,12 +335,14 @@ python export_ucalgary_anki.py
 **The script will:**
 
 1. Prompt for credentials (first run only)
-2. Ask for a UCalgary Cards deck URL
-3. Log into the Cards site automatically
-4. Scrape all questions and answers from the deck
-5. **Open a "Save As" dialog** for you to choose where to save the `.apkg` file
-6. Generate an Anki deck file ready for import
-7. **Show a success popup** with import instructions
+2. Ask for a UCalgary Cards deck or collection URL
+3. **Detect URL type automatically** (individual deck vs. collection)
+4. Log into the Cards site automatically
+5. **For collections**: Find all decks and scrape each one with progress tracking
+6. **For individual decks**: Scrape all questions and answers from the deck
+7. **Open a "Save As" dialog** for you to choose where to save the `.apkg` file
+8. Generate an Anki deck file ready for import with proper organization
+9. **Show a success popup** with import instructions
 
 **Import to Anki:** Open Anki → File → Import → Select your `.apkg` file
 
@@ -340,26 +352,41 @@ python export_ucalgary_anki.py
 
 ## URL Examples
 
-The script accepts both **details** and **printdeck** URLs:
+The script accepts both **individual deck URLs** and **collection URLs**:
 
-**Details URL (recommended):**
+**Individual Deck - Details URL (recommended):**
 
 ```
 https://cards.ucalgary.ca/details/1261?bag_id=151
 ```
 
-**Printdeck URL:**
+**Individual Deck - Printdeck URL:**
 
 ```
 https://cards.ucalgary.ca/printdeck/1261?bag_id=151
 ```
 
+**Collection URL (NEW!):**
+
+```
+https://cards.ucalgary.ca/collection/150
+```
+
 **How to find your URL:**
 
 1. Log into cards.ucalgary.ca
-2. Navigate to your desired deck
+2. Navigate to your desired deck or collection
 3. Copy the URL from your browser's address bar
-4. The script will automatically detect the deck ID and bag_id
+4. **For collections**: The script will automatically find all decks in the collection
+5. **For individual decks**: The script will automatically detect the deck ID and bag_id
+
+**Collection Benefits:**
+
+- 📚 **One-click conversion**: Convert entire collections with multiple decks
+- �️ **Hierarchical organization**: Creates structure like "RIME 0.0.1::Details::Patient Name"
+- 📊 **Progress tracking**: See progress for each deck as it's processed
+- 🎯 **Comprehensive**: Get all cards from all decks in one organized Anki file
+- 👥 **Patient organization**: Automatically extracts and organizes cards by patient names
 
 ---
 
