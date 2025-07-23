@@ -21,6 +21,14 @@ import re
 
 from urllib.parse import urlparse, parse_qs
 
+# Try to import tkinter for file dialogs (fallback to command line if not available)
+try:
+    import tkinter as tk
+    from tkinter import filedialog, messagebox
+    HAS_GUI = True
+except ImportError:
+    HAS_GUI = False
+
 # Config file for storing credentials
 CONFIG_PATH = os.path.expanduser("~/.uc_anki_config.json")
 
@@ -737,6 +745,72 @@ def prompt_credentials(base_host):
     sys.exit("Failed to login after 3 attempts")
 
 
+def prompt_save_location(default_filename):
+    """
+    Prompt user for save location using GUI file dialog if available,
+    otherwise fall back to command line input.
+    """
+    if HAS_GUI:
+        try:
+            # Create a root window but hide it
+            root = tk.Tk()
+            root.withdraw()  # Hide the main window
+            root.lift()      # Bring to front
+            root.attributes('-topmost', True)  # Keep on top
+            
+            # Configure file dialog
+            file_types = [
+                ('Anki Deck Files', '*.apkg'),
+                ('All Files', '*.*')
+            ]
+            
+            # Show save dialog
+            file_path = filedialog.asksaveasfilename(
+                title="Save Anki Deck As...",
+                defaultextension=".apkg",
+                filetypes=file_types,
+                initialfile=default_filename
+            )
+            
+            # Clean up
+            root.destroy()
+            
+            if file_path:  # User selected a file
+                return file_path
+            else:  # User cancelled
+                print("Save cancelled by user.")
+                sys.exit(0)
+                
+        except Exception as e:
+            print(f"GUI dialog failed ({e}), falling back to command line input...")
+            # Fall through to command line prompt
+    
+    # Command line fallback
+    print(f"\n📁 Save Location")
+    print(f"Default: {default_filename}")
+    user_input = input(f"Enter path to save Anki deck (or press Enter for default): ").strip()
+    return user_input if user_input else default_filename
+
+
+def show_completion_message(output_path, card_count):
+    """
+    Show completion message with GUI if available, otherwise console only.
+    """
+    message = f"✅ Success! Created Anki deck with {card_count} cards.\n\nSaved to: {output_path}\n\nImport this file into Anki:\nFile → Import → Select your .apkg file"
+    
+    if HAS_GUI:
+        try:
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showinfo("Anki Deck Created Successfully!", message)
+            root.destroy()
+        except Exception:
+            # Fall back to console if GUI fails
+            pass
+    
+    print(f"\n🎉 {message}")
+
+
 def main():
     # Interactive credential setup
     # Determine host and default BASE from .env parsing above
@@ -799,11 +873,16 @@ def main():
     else:
         deck_id = bag_id or "unknown"
     deck_name = f"Deck_{deck_id}"
-    # Prompt user for output path without GUI
+    
+    # Use GUI file dialog or command line prompt for save location
     default_filename = f"{deck_name}.apkg"
-    user_input = input(f"Enter path to save Anki deck [{default_filename}]: ").strip()
-    output_path = user_input if user_input else default_filename
+    output_path = prompt_save_location(default_filename)
+    
+    # Export the deck
     export_apkg(cards, deck_name, output_path)
+    
+    # Show completion message
+    show_completion_message(output_path, len(cards))
 
 
 if __name__ == "__main__":

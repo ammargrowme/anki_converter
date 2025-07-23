@@ -19,13 +19,25 @@ Loading screen...
 Logging in...
 Logged in successfully
 Scraping cards: 100%|████████████| 6/6 [00:15<00:00, 2.5s/it]
-[+] APKG → Deck_1261.apkg
+
+📁 Save Location
+[GUI file dialog opens for you to choose save location]
+
+[+] APKG → C:\Users\YourName\Desktop\Deck_1261.apkg
+✅ Success! Created Anki deck with 6 cards.
+[Success popup appears with import instructions]
 ```
 
 **Generated Files:**
-- **`Deck_<ID>.apkg`** - Ready-to-import Anki deck file
+- **`Deck_<ID>.apkg`** - Ready-to-import Anki deck file (saved where you chose)
 - **`~/.uc_anki_config.json`** - Your saved login credentials (secure)
 - **`activate.sh`** / **`activate.bat`** - Easy environment activation scripts
+
+**User Experience:**
+- 💾 **Modern file dialogs** - Save files like any desktop application  
+- 🎉 **Success notifications** - Clear confirmation when complete
+- 🔄 **Smart fallback** - Works in command-line environments too
+- 📱 **Cross-platform** - Same experience on Windows, Mac, and Linux
 
 **What Gets Scraped:**
 - Question text and background context
@@ -141,8 +153,13 @@ A command-line tool that logs into the University of Calgary Cards site, scrapes
 ### What Happens Next:
 1. The script asks for your UCalgary email and password (saved securely)
 2. Paste your Cards deck URL when prompted
-3. Choose where to save your Anki deck file
+3. **A "Save As" dialog will open** - choose where to save your Anki deck file (just like saving any file!)
 4. Import the `.apkg` file into Anki: **File → Import → Select your file**
+
+**✨ New GUI Features:**
+- 💾 **File Save Dialog** - No more typing file paths! Click and save like any app
+- 🎉 **Success Popup** - Clear confirmation when your deck is ready
+- 🔄 **Automatic Fallback** - Uses command line if GUI isn't available
 
 ---
 
@@ -250,7 +267,9 @@ python export_ucalgary_anki.py
 2. Ask for a UCalgary Cards deck URL
 3. Log into the Cards site automatically
 4. Scrape all questions and answers from the deck
-5. Generate an Anki `.apkg` file ready for import
+5. **Open a "Save As" dialog** for you to choose where to save the `.apkg` file
+6. Generate an Anki deck file ready for import
+7. **Show a success popup** with import instructions
 
 **Import to Anki:** Open Anki → File → Import → Select your `.apkg` file
 

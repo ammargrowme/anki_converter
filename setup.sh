@@ -214,6 +214,28 @@ else
     exit 1
 fi
 
+# Test GUI support (tkinter)
+echo "🖥️  Checking GUI support..."
+if python -c "import tkinter; print('GUI support available')" 2>/dev/null; then
+    echo "✅ GUI file dialogs will be available"
+    GUI_SUPPORT=true
+else
+    echo "⚠️  GUI support not available - will use command line dialogs"
+    GUI_SUPPORT=false
+    
+    if [[ $OS == "linux" ]]; then
+        echo "   To enable GUI dialogs on Linux, install tkinter:"
+        echo "   sudo apt install python3-tk"
+        echo "   Then re-run this setup script"
+    elif [[ $OS == "macos" ]]; then
+        echo "   GUI support should be available on macOS by default"
+        echo "   You may need to reinstall Python with GUI support"
+    elif [[ $OS == "windows" ]]; then
+        echo "   GUI support should be available on Windows by default"
+        echo "   You may need to reinstall Python with full features"
+    fi
+fi
+
 # Create activation helper script
 cat > activate.sh << 'EOF'
 #!/bin/bash
@@ -252,7 +274,11 @@ echo ""
 echo "3️⃣  Follow the prompts to:"
 echo "   • Enter your UCalgary credentials (saved securely)"
 echo "   • Provide the deck URL"
-echo "   • Choose output location"
+if [[ $GUI_SUPPORT == true ]]; then
+    echo "   • Use the file dialog to choose where to save your .apkg file"
+else
+    echo "   • Type the path where you want to save your .apkg file"
+fi
 echo ""
 echo "📁 Files created:"
 echo "   • .venv/          - Python virtual environment"
@@ -263,10 +289,18 @@ echo "🔒 Security notes:"
 echo "   • Credentials saved in: ~/.uc_anki_config.json"
 echo "   • Delete this file to reset saved login"
 echo "   • Virtual environment isolates dependencies"
+if [[ $GUI_SUPPORT == true ]]; then
+    echo "   • GUI file dialogs provide secure file selection"
+fi
 echo ""
 if [[ $CHROME_FOUND == false ]]; then
     echo "⚠️  REMINDER: Install Google Chrome before running the converter"
     echo "   Download: https://www.google.com/chrome/"
     echo ""
 fi
-echo "🎯 Ready to convert UCalgary Cards to Anki decks!"
+if [[ $GUI_SUPPORT == true ]]; then
+    echo "🎯 Ready to convert UCalgary Cards to Anki decks with GUI dialogs!"
+else
+    echo "🎯 Ready to convert UCalgary Cards to Anki decks!"
+    echo "   (Command line interface - consider installing GUI support for better experience)"
+fi

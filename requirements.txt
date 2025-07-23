@@ -15,6 +15,10 @@ genanki>=0.13.0
 tqdm>=4.65.0
 colorama>=0.4.6
 
+# GUI file dialogs (tkinter is built-in with Python)
+# Note: tkinter comes with Python by default on most systems
+# If missing on Linux: sudo apt install python3-tk
+
 # Environment and configuration
 python-dotenv>=1.0.0
 
