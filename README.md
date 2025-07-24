@@ -20,6 +20,9 @@ A command-line tool that logs into the University of Calgary Cards site, scrapes
 - 🎓 **Curriculum Pattern Detection**: Special handling for RIME-style collections (e.g., RIME 1.1.3 → Block::Unit::Week hierarchy)
 - 📝 **Proper Deck Names**: Extracts actual deck names (e.g., "Get to know SAWH", "SAWH what is it good for") instead of generic titles
 - 🔐 **Secure**: Saves credentials locally with proper encryption
+- 📋 **Enhanced Content Extraction**: Captures tables, images, lists, charts, and formatted content from cards
+- 🖼️ **Rich Media Support**: Preserves images, diagrams, and visual elements in Anki cards
+- 📊 **Table Preservation**: Maintains table formatting and structure in exported cards
 
 ---
 
@@ -76,11 +79,17 @@ Scraping cards: 100%|████████████| 6/6 [00:15<00:00, 2.5
 **What Gets Scraped:**
 
 - Question text and background context
+- **📋 Tables and data grids** - Preserved with original formatting
+- **🖼️ Images and diagrams** - Maintained with proper sizing and alt text
+- **📝 Lists and formatted text** - Bullet points, numbered lists, and text formatting
+- **📊 Charts and graphs** - Visual elements and embedded content
+- **🎨 Rich HTML content** - Styled text, emphasis, and structured content
 - Multiple choice options (with interactive selection in Anki)
 - Free-text question fields
 - Correct answers and explanations
 - Score information and feedback
 - **All cards from multi-patient decks** (e.g., 6 cards from 3 patients)
+- **Additional context** - Content from solution areas and workspace containers
 
 **Anki Card Features:**
 
