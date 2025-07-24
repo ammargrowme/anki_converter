@@ -235,6 +235,124 @@ def extract_images_from_html(html_content, session, base_host):
     return html_content, extracted_images
 
 
+def extract_images_from_page(driver, session, base_host):
+    """
+    Extract images directly from the current page using multiple selectors.
+    Returns HTML content with embedded images for inclusion in question/background.
+    """
+    print(f"🖼️ Extracting images from current page...")
+    
+    # Multiple selectors to find images in different sections
+    image_selectors = [
+        "#workspace > div.solution.container > div > img",           # Question section images
+        "#workspace > div.solution.container > div.options > img",  # In options
+        "#workspace > div.solution.container img",                  # Any image in solution container
+        ".question img",                                            # Question area images
+        ".background img",                                          # Background area images
+        ".container.card img",                                      # Card container images
+        "div.solution img",                                         # Solution area images
+        "img[src]"                                                  # Fallback - any image with src
+    ]
+    
+    all_images_html = []
+    processed_urls = set()  # Prevent duplicates
+    
+    for selector in image_selectors:
+        try:
+            images = driver.find_elements(By.CSS_SELECTOR, selector)
+            print(f"  🔍 Found {len(images)} images with selector: {selector}")
+            
+            for img in images:
+                try:
+                    img_src = img.get_attribute("src")
+                    if not img_src or img_src in processed_urls:
+                        continue
+                    
+                    processed_urls.add(img_src)
+                    
+                    # Get additional attributes for better HTML reconstruction
+                    img_alt = img.get_attribute("alt") or ""
+                    img_title = img.get_attribute("title") or ""
+                    img_class = img.get_attribute("class") or ""
+                    img_style = img.get_attribute("style") or ""
+                    img_width = img.get_attribute("width") or ""
+                    img_height = img.get_attribute("height") or ""
+                    
+                    # Check if this is a portrait image we should filter
+                    if is_portrait_image(img_src, img_alt, img_title, img_class):
+                        print(f"  🚫 Skipping portrait image: {img_src}")
+                        continue
+                    
+                    # Handle relative URLs
+                    if img_src.startswith('/'):
+                        img_url = base_host + img_src
+                    elif img_src.startswith('http'):
+                        img_url = img_src
+                    else:
+                        img_url = base_host + '/' + img_src
+                    
+                    print(f"  📥 Downloading image: {img_url}")
+                    
+                    # Download the image
+                    response = session.get(img_url, timeout=10)
+                    if response.status_code == 200:
+                        # Get file extension
+                        content_type = response.headers.get('content-type', '')
+                        if 'image/png' in content_type:
+                            ext = 'png'
+                        elif 'image/jpeg' in content_type or 'image/jpg' in content_type:
+                            ext = 'jpg'
+                        elif 'image/gif' in content_type:
+                            ext = 'gif'
+                        elif 'image/svg' in content_type:
+                            ext = 'svg'
+                        else:
+                            ext = 'png'  # default
+                        
+                        # Create base64 data URL
+                        import base64
+                        img_data = base64.b64encode(response.content).decode('utf-8')
+                        data_url = f"data:image/{ext};base64,{img_data}"
+                        
+                        # Reconstruct the HTML img tag with all attributes
+                        img_attrs = []
+                        img_attrs.append(f'src="{data_url}"')
+                        if img_alt:
+                            img_attrs.append(f'alt="{img_alt}"')
+                        if img_title:
+                            img_attrs.append(f'title="{img_title}"')
+                        if img_class:
+                            img_attrs.append(f'class="{img_class}"')
+                        if img_style:
+                            img_attrs.append(f'style="{img_style}"')
+                        if img_width:
+                            img_attrs.append(f'width="{img_width}"')
+                        if img_height:
+                            img_attrs.append(f'height="{img_height}"')
+                        
+                        img_html = f'<img {" ".join(img_attrs)}>'
+                        all_images_html.append(img_html)
+                        
+                        print(f"  ✅ Successfully embedded image ({len(response.content)} bytes)")
+                    else:
+                        print(f"  ❌ Failed to download image: HTTP {response.status_code}")
+                        
+                except Exception as e:
+                    print(f"  ❌ Error processing image: {e}")
+                    
+        except Exception as e:
+            print(f"  ⚠️ Error with selector {selector}: {e}")
+    
+    if all_images_html:
+        # Wrap images in a container for better styling
+        images_section = '<div class="extracted-images">' + ''.join(all_images_html) + '</div>'
+        print(f"  ✅ Extracted {len(all_images_html)} images from page")
+        return images_section
+    else:
+        print(f"  ⚠️ No images found on page")
+        return ""
+
+
 def is_portrait_image(img_src, img_alt, img_title="", img_class=""):
     """
     Determine if an image is likely a portrait/headshot that should be filtered out.
@@ -258,7 +376,14 @@ def is_portrait_image(img_src, img_alt, img_title="", img_class=""):
         "faculty", "bio", "biography", "people"
     ]
     
-    # Medical content indicators that should be kept - made more specific
+    # UI/Logo/Avatar indicators - these should always be filtered (be more specific)
+    ui_indicators = [
+        "anon.png", "anonymous", "uc-cumming", "UC-cumming-black.png",
+        "logo.png", "logo.jpg", "logo.svg", "badge", "icon", 
+        "nav", "navigation", "header", "footer", "sidebar", "menu", "button"
+    ]
+    
+    # Medical content indicators that should be kept - comprehensive list
     medical_indicators = [
         "ecg", "ekg", "electrocardiogram", "monitor", "vital_signs", "vitalsigns",
         "cardiac_monitor", "heart_monitor", "rhythm_strip", "waveform", 
@@ -267,24 +392,32 @@ def is_portrait_image(img_src, img_alt, img_title="", img_class=""):
         "cardiac", "pulmonary", "respiratory", "chest_xray",
         "diagnostic", "test_result", "lab_result", "pathology", "radiology",
         "equipment", "device", "machine", "display", "screen", "readout",
-        "medical_chart", "ecg_trace", "rhythm", "heart_rate"
+        "medical_chart", "ecg_trace", "rhythm", "heart_rate", "anatomy",
+        "antcirc", "circulation", "structure", "identify", "diagram", "uploads/card",
+        "medical", "clinical", "patient", "case", "study", "education", "learning"
     ]
     
-    # Check for strong portrait indicators first
-    for indicator in portrait_indicators:
-        if indicator in all_text:
-            print(f"    🚫 PORTRAIT detected (indicator: '{indicator}')")
-            return True  # Likely a portrait, filter it out
-    
-    # Check for medical indicators - but be more specific
+    # Check for medical indicators FIRST - highest priority for keeping
     medical_matches = []
     for indicator in medical_indicators:
         if indicator in all_text:
             medical_matches.append(indicator)
     
     if medical_matches:
-        print(f"    ✅ MEDICAL content detected (indicators: {medical_matches})")
-        return False  # Not a portrait, keep it
+        print(f"    ✅ MEDICAL content detected (indicators: {medical_matches}) - KEEPING")
+        return False  # Medical content, keep it
+    
+    # Check for specific UI/Logo indicators 
+    for indicator in ui_indicators:
+        if indicator in all_text:
+            print(f"    🚫 UI/LOGO detected (indicator: '{indicator}')")
+            return True
+    
+    # Check for strong portrait indicators
+    for indicator in portrait_indicators:
+        if indicator in all_text:
+            print(f"    🚫 PORTRAIT detected (indicator: '{indicator}')")
+            return True  # Likely a portrait, filter it out
     
     # Additional heuristics based on file names
     if "jpg" in src_lower or "jpeg" in src_lower or "png" in src_lower:
@@ -311,9 +444,20 @@ def is_portrait_image(img_src, img_alt, img_title="", img_class=""):
         print(f"    🚫 PORTRAIT detected (title-based)")
         return True
     
-    # Default to keeping the image if still uncertain
-    print(f"    ❓ UNKNOWN - keeping image")
-    return False
+    # If we can't identify it clearly, but it's in a medical/educational context, keep it
+    # Look for educational context clues
+    educational_context = any(word in all_text for word in [
+        "uploads/card", "question", "case", "study", "patient", "medical", 
+        "clinical", "anatomy", "identify", "structure", "diagram"
+    ])
+    
+    if educational_context:
+        print(f"    ✅ EDUCATIONAL context detected - keeping image")
+        return False
+    
+    # Only filter if we're confident it's not medical/educational content
+    print(f"    🚫 UNIDENTIFIED - filtering out (safety)")
+    return True
 
 
 def extract_comprehensive_background(driver):
@@ -462,6 +606,39 @@ def extract_comprehensive_background(driver):
                         medical_text_html = f'<div style="border-left: 4px solid #007cba; padding: 10px; margin: 10px 0; background: #f9f9f9;"><h4>🏥 Medical Information:</h4><p>{div_text}</p></div>'
                         background_parts.append(medical_text_html)
                         print(f"  🏥 Extracted medical text content ({len(div_text)} chars)")
+                
+                # If no specific medical content found, look for any substantial text content
+                if not background_parts:
+                    # Look for any divs with substantial text content
+                    all_divs = container.find_elements(By.CSS_SELECTOR, "div")
+                    seen_text = set()  # Prevent duplicates
+                    
+                    for div in all_divs:
+                        # Skip divs that contain other complex elements
+                        if div.find_elements(By.CSS_SELECTOR, "div, table, canvas, img, form"):
+                            continue
+                        
+                        div_text = div.text.strip()
+                        if len(div_text) > 30 and div_text not in seen_text:  # Any substantial text content, no duplicates
+                            text_html = f'<div style="padding: 10px; margin: 10px 0; background: #f9f9f9;"><p>{div_text}</p></div>'
+                            background_parts.append(text_html)
+                            seen_text.add(div_text)
+                            print(f"  📝 Extracted text content ({len(div_text)} chars)")
+                
+                    # Also look for paragraphs directly (but ONLY if no div content was found)
+                    if not background_parts:
+                        paragraphs = container.find_elements(By.TAG_NAME, "p")
+                        seen_paragraphs = set()
+                        
+                        for p in paragraphs:
+                            p_text = p.text.strip()
+                            if len(p_text) > 20 and p_text not in seen_paragraphs:  # Substantial paragraph content, no duplicates
+                                p_html = f'<p style="padding: 5px; margin: 5px 0;">{p_text}</p>'
+                                background_parts.append(p_html)
+                                seen_paragraphs.add(p_text)
+                                print(f"  📄 Extracted paragraph ({len(p_text)} chars)")
+                else:
+                    print(f"  ✅ Using medical content divs, skipping general text extraction")
                         
             except Exception as e:
                 print(f"Warning: Error extracting medical text: {e}")
@@ -719,6 +896,61 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
                 # Now scrape the card page just like before
                 # Extract comprehensive background content (paragraphs, tables, images, etc.)
                 background = extract_comprehensive_background(driver)
+                
+                # Prepare session with Selenium cookies for image downloading
+                sess = requests.Session()
+                for c in driver.get_cookies():
+                    sess.cookies.set(c["name"], c["value"])
+                
+                # Extract images from the current page (question section, etc.)
+                page_images = extract_images_from_page(driver, sess, base_host)
+                
+                # Only use fallback text extraction if extract_comprehensive_background found NOTHING
+                if not background or len(background.strip()) < 50:  # Only if truly empty or very minimal
+                    try:
+                        print(f"  🔍 Background content insufficient ({len(background) if background else 0} chars), trying fallback extraction...")
+                        # Look for any text content in the card container
+                        card_containers = driver.find_elements(By.CSS_SELECTOR, "body > div > div.container.card")
+                        if not card_containers:
+                            card_containers = driver.find_elements(By.CSS_SELECTOR, "div.container.card")
+                        
+                        text_parts = []
+                        seen_text = set()  # Prevent duplicates
+                        
+                        for container in card_containers:
+                            # Extract paragraphs
+                            paragraphs = container.find_elements(By.TAG_NAME, "p")
+                            for p in paragraphs:
+                                p_text = p.text.strip()
+                                if len(p_text) > 20 and p_text not in seen_text:  # Only substantial content, no duplicates
+                                    text_parts.append(f"<p>{p_text}</p>")
+                                    seen_text.add(p_text)
+                            
+                            # Extract divs with substantial text (but avoid duplicates)
+                            text_divs = container.find_elements(By.CSS_SELECTOR, "div")
+                            for div in text_divs:
+                                # Skip if it contains other elements we've already processed
+                                if div.find_elements(By.CSS_SELECTOR, "p, table, img, canvas"):
+                                    continue
+                                div_text = div.text.strip()
+                                if len(div_text) > 30 and div_text not in seen_text:  # Only substantial content, no duplicates
+                                    text_parts.append(f"<div>{div_text}</div>")
+                                    seen_text.add(div_text)
+                        
+                        if text_parts:
+                            background = "<br/>".join(text_parts[:3])  # Limit to 3 parts to avoid duplicates
+                            print(f"  📝 Extracted fallback text content: {len(background)} chars")
+                    except Exception as e:
+                        print(f"  ⚠️ Error extracting text content: {e}")
+                else:
+                    print(f"  ✅ Using background content from extract_comprehensive_background ({len(background)} chars) - SKIPPING fallback")
+                
+                # Add images to background if found
+                if page_images:
+                    if background:
+                        background = page_images + "<br/><br/>" + background
+                    else:
+                        background = page_images
                 
                 # Debug: Print what background content was found
                 if background:
@@ -978,6 +1210,21 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
 
                 # Extract comprehensive background content (paragraphs, tables, images, etc.)
                 background = extract_comprehensive_background(driver)
+                
+                # Prepare session with Selenium cookies for image downloading
+                sess = requests.Session()
+                for c in driver.get_cookies():
+                    sess.cookies.set(c["name"], c["value"])
+                
+                # Extract images from the current page (question section, etc.)
+                page_images = extract_images_from_page(driver, sess, base_host)
+                
+                # Add images to background if found
+                if page_images:
+                    if background:
+                        background = page_images + "<br/><br/>" + background
+                    else:
+                        background = page_images
                 
                 # Debug: Print what background content was found  
                 if background:
@@ -1563,6 +1810,31 @@ table th {
     font-weight: bold;
     margin-top: 20px;
     margin-bottom: 10px;
+}
+
+/* Styling for extracted images */
+.extracted-images {
+    margin: 15px 0;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background: #fafafa;
+}
+
+.extracted-images img {
+    max-width: 100%;
+    height: auto;
+    margin: 5px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Responsive image sizing */
+.extracted-images img[width] {
+    max-width: 100% !important;
+    width: auto !important;
+    height: auto !important;
 }
 """,
         templates=[
@@ -2197,8 +2469,14 @@ def main():
     # Interactive credential setup
     # Determine host and default BASE from .env parsing above
     host = BASE
-    # Prompt URL every run
-    base_url_override = input("Enter UCalgary collection or deck URL: ").strip()
+    
+    # Check for command line argument first
+    if len(sys.argv) > 1:
+        base_url_override = sys.argv[1].strip()
+        print(f"Using URL from command line: {base_url_override}")
+    else:
+        # Prompt URL if no command line argument
+        base_url_override = input("Enter UCalgary collection or deck URL: ").strip()
 
     # Ask for card limit for testing/troubleshooting
     print("\n🔧 Testing Options:")
