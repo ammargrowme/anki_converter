@@ -17,6 +17,10 @@ import genanki
 from tqdm import tqdm
 import requests
 import re
+from collections import defaultdict
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 from urllib.parse import urlparse, parse_qs
 
@@ -1134,6 +1138,290 @@ def extract_deck_metadata(driver, base_host, deck_id, bag_id):
     return (patients if patients else ["Unknown Patient"], total_cards)
 
 
+def extract_card_details_sequential(driver, card_number):
+    """Extract detailed information from the current card in sequential mode"""
+    try:
+        # Get current URL to extract card ID
+        current_url = driver.current_url
+        card_id = None
+        if "/card/" in current_url:
+            try:
+                card_id = current_url.split("/card/")[1].split("/")[0].split("?")[0]
+            except:
+                pass
+        
+        # Extract question content using multiple selectors
+        question_selectors = [
+            ".question", ".card-question", "[class*='question']",
+            ".prompt", ".card-prompt", "[class*='prompt']",
+            "h1", "h2", "h3", ".title", ".card-title",
+            "#workspace .container h1", "#workspace .container h2"
+        ]
+        
+        question_text = ""
+        for selector in question_selectors:
+            try:
+                elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                for elem in elements:
+                    text = elem.text.strip()
+                    if text and len(text) > 10:
+                        question_text = text
+                        break
+                if question_text:
+                    break
+            except:
+                pass
+        
+        # Extract answer options for analysis
+        answer_selectors = [
+            ".answer", ".option", ".choice", "input[type='radio']", 
+            "button[type='submit']", ".answer-option", "[class*='answer']",
+            "[class*='option']", "[class*='choice']"
+        ]
+        
+        answer_options = []
+        for selector in answer_selectors:
+            try:
+                elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                for elem in elements:
+                    text = elem.text.strip()
+                    value = elem.get_attribute("value") or ""
+                    if text or value:
+                        answer_options.append({"text": text, "value": value})
+            except:
+                pass
+        
+        return {
+            "card_number": card_number,
+            "card_id": card_id,
+            "url": current_url,
+            "question": question_text,
+            "answer_options": answer_options,
+            "page_title": driver.title,
+            "timestamp": time.time()
+        }
+        
+    except Exception as e:
+        return {
+            "card_number": card_number,
+            "error": str(e),
+            "url": driver.current_url,
+            "timestamp": time.time()
+        }
+
+
+def navigate_to_next_card_sequential(driver):
+    """Navigate to the next card in sequential mode using two-step process"""
+    try:
+        print(f"    🔍 Looking for navigation elements...")
+        
+        # Step 1: First submit an answer (required before next card appears)
+        submitted = False
+        
+        # Try to find and submit an answer first
+        submit_selectors = [
+            "button[type='submit']", "input[type='submit']",
+            "button[onclick*='submit']", "form button"
+        ]
+        
+        for selector in submit_selectors:
+            try:
+                elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                for elem in elements:
+                    try:
+                        if elem.is_displayed() and elem.is_enabled():
+                            print(f"    📝 Submitting answer first...")
+                            elem.click()
+                            time.sleep(3)
+                            submitted = True
+                            break
+                    except:
+                        pass
+                if submitted:
+                    break
+            except:
+                pass
+        
+        # If no submit button found, try selecting a radio button first
+        if not submitted:
+            try:
+                radio_buttons = driver.find_elements(By.CSS_SELECTOR, "input[type='radio']")
+                if radio_buttons:
+                    print(f"    🔘 Selecting first answer option...")
+                    radio_buttons[0].click()
+                    time.sleep(2)
+                    
+                    # Now try submit again
+                    submit_elements = driver.find_elements(By.CSS_SELECTOR, "button[type='submit'], input[type='submit']")
+                    if submit_elements:
+                        submit_elements[0].click()
+                        time.sleep(3)
+                        submitted = True
+            except:
+                pass
+        
+        # Step 2: Now look for "Next Card" button
+        next_card_selectors = [
+            # Specific "Next Card" text
+            "//*[contains(text(), 'Next Card')]",
+            "//*[contains(text(), 'Next')]",
+            "//*[contains(text(), 'Continue')]",
+            
+            # Button attributes that might indicate next
+            "button[onclick*='next']", "button[onclick*='continue']",
+            "a[href*='next']", "a[onclick*='next']",
+            
+            # Class-based selectors
+            ".next", ".continue", "[class*='next']", "[class*='continue']",
+            ".next-card", ".btn-next", "[class*='next-card']"
+        ]
+        
+        for selector in next_card_selectors:
+            try:
+                if selector.startswith("//"):
+                    # XPath selector
+                    elements = driver.find_elements(By.XPATH, selector)
+                else:
+                    # CSS selector
+                    elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                
+                for elem in elements:
+                    try:
+                        if elem.is_displayed() and elem.is_enabled():
+                            print(f"    ➡️ Found navigation element: '{elem.text.strip()}'")
+                            elem.click()
+                            time.sleep(4)  # Wait for navigation
+                            return True
+                    except Exception as e:
+                        print(f"    ⚠️ Error clicking element: {e}")
+                        continue
+            except:
+                continue
+        
+        return False
+        
+    except Exception as e:
+        print(f"    ❌ Error navigating to next card: {e}")
+        return False
+
+
+def get_total_questions_from_deck_details_page(driver, base_host, deck_id, bag_id):
+    """Get total number of questions from the deck details page (where 'Correct: X of Y' is shown)"""
+    try:
+        # Visit the deck details page to get the question counter
+        details_url = f"{base_host}/details/{deck_id}?bag_id={bag_id}"
+        print(f"🔍 Checking question counter on deck details page: {details_url}")
+        driver.get(details_url)
+        time.sleep(3)
+        
+        # Look for "Correct: X of Y" pattern on the deck details page
+        page_text = driver.page_source
+        
+        print(f"🔍 Searching for 'Correct: X of Y' pattern on deck details page...")
+        
+        # Common patterns for question counters on deck details page
+        patterns = [
+            r'Correct:\s*(\d+)\s+of\s+(\d+)',  # "Correct: 1 of 9" or "Correct:1 of 9"
+            r'Correct\s*(\d+)\s+of\s+(\d+)',   # "Correct 1 of 9"
+            r'(\d+)\s+of\s+(\d+)',             # "1 of 9" (fallback)
+        ]
+        
+        # Try each pattern
+        for pattern in patterns:
+            matches = re.findall(pattern, page_text, re.IGNORECASE)
+            if matches:
+                print(f"🔍 Pattern '{pattern}' found {len(matches)} matches: {matches[:3]}...")
+                # Filter out 0 of 0 matches and get the last valid one
+                valid_matches = [(c, t) for c, t in matches if int(t) > 0]
+                if valid_matches:
+                    current, total = valid_matches[-1]
+                    total_questions = int(total)
+                    print(f"📊 Found question counter: {current} of {total} (pattern: {pattern})")
+                    return total_questions
+        
+        # If no pattern found, return default but warn
+        print(f"⚠️ Could not find question counter on deck details page, using default of 5")
+        return 5
+        
+    except Exception as e:
+        print(f"⚠️ Error getting total questions from deck details: {e}")
+        return 5
+
+
+def extract_cards_sequential_mode(driver, base_host, deck_id, bag_id, max_cards=20):
+    """Extract all cards using sequential mode without patient organization"""
+    print(f"\n🔄 EXTRACTING CARDS VIA SEQUENTIAL MODE")
+    print("=" * 60)
+    
+    # Get expected total questions from the deck details page
+    expected_questions = get_total_questions_from_deck_details_page(driver, base_host, deck_id, bag_id)
+    
+    # Now start sequential mode
+    sequential_url = f"{base_host}/deck/{deck_id}?timer-enabled=1&mode=sequential"
+    print(f"🎯 Starting sequential mode: {sequential_url}")
+    
+    driver.get(sequential_url)
+    time.sleep(5)  # Wait for page to load
+    
+    print(f"📊 Target: {expected_questions} questions (no patient organization)")
+    
+    all_cards = []
+    seen_card_ids = set()
+    card_number = 1
+    
+    # Adjust max_cards based on expected questions
+    max_cards_to_try = max(expected_questions + 3, max_cards)  # Add buffer for safety
+    
+    while card_number <= max_cards_to_try:
+        print(f"\n📄 Processing Card {card_number}")
+        print("-" * 40)
+        
+        # Extract current card details
+        card_data = extract_card_details_sequential(driver, card_number)
+        
+        if card_data.get("error"):
+            print(f"    ❌ Error: {card_data['error']}")
+            break
+        
+        # Check for cycle detection
+        card_id = card_data.get("card_id")
+        
+        print(f"    🆔 Card ID: {card_id}")
+        print(f"    📝 Question: {card_data.get('question', '')[:100]}..." if card_data.get('question') else "    📝 Question: [Not found]")
+        
+        # Primary cycle detection: Card ID repetition (most reliable)
+        if card_id and card_id in seen_card_ids:
+            print(f"    🔄 CYCLE DETECTED: Card ID {card_id} already seen")
+            print(f"    🏁 Stopping extraction - found {len(all_cards)} unique cards")
+            break
+        
+        # Stop exactly when we reach the expected number of questions
+        if len(all_cards) >= expected_questions:
+            print(f"    🎯 REACHED TARGET: Found {len(all_cards)} cards (expected {expected_questions})")
+            print(f"    🏁 Stopping extraction - target achieved!")
+            break
+        
+        # Record this card
+        all_cards.append(card_data)
+        if card_id:
+            seen_card_ids.add(card_id)
+        
+        print(f"    ✅ Card {card_number} recorded (total: {len(all_cards)}/{expected_questions})")
+        
+        # Navigate to next card
+        print(f"    ➡️ Navigating to next card...")
+        if not navigate_to_next_card_sequential(driver):
+            print(f"    ❌ Could not navigate to next card, stopping extraction")
+            break
+        
+        card_number += 1
+        
+        # Brief pause between cards
+        time.sleep(2)
+    
+    return all_cards, expected_questions
+
+
 def extract_patients_from_deck_page(driver, base_host, deck_id, bag_id):
     """
     Extract patient names from a deck/bag page by visiting the deck details page.
@@ -1197,9 +1485,83 @@ def selenium_scrape_deck(
             # Check if printdeck page is accessible
             if "Error 403" in driver.title or "Access denied" in driver.page_source:
                 print(
-                    f"⚠️  Printdeck page not accessible for deck {deck_id_from_url}, trying patient-based method..."
+                    f"⚠️  Printdeck page not accessible for deck {deck_id_from_url}, trying sequential method..."
                 )
-                # Try patient-based approach: extract cards by patient to avoid duplicates
+                
+                # For decks without print access, use sequential method directly
+                # This handles multiple questions per patient properly
+                try:
+                    print(f"🔄 Using sequential method for deck {deck_id_from_url}...")
+                    sequential_cards, expected_questions = extract_cards_sequential_mode(
+                        driver, base_host, deck_id_from_url, bag_id, max_cards=50
+                    )
+                    
+                    if sequential_cards:
+                        print(f"✅ Sequential method found {len(sequential_cards)} cards")
+                        
+                        # Convert sequential cards to the format expected by the rest of the function
+                        cards = []
+                        for i, seq_card in enumerate(sequential_cards):
+                            if seq_card.get("error"):
+                                continue
+                            
+                            # Get the card ID and URL
+                            card_id = seq_card.get("card_id")
+                            if not card_id:
+                                continue
+                            
+                            # Visit the card page to extract full content
+                            card_url = f"{base_host}/card/{card_id}"
+                            driver.get(card_url)
+                            time.sleep(2)
+                            
+                            # Extract comprehensive background content
+                            background = extract_comprehensive_background(driver)
+                            
+                            # Prepare session with Selenium cookies for image downloading
+                            sess = requests.Session()
+                            for c in driver.get_cookies():
+                                sess.cookies.set(c["name"], c["value"])
+                            
+                            # Extract images from the current page
+                            page_images = extract_images_from_page(driver, sess, base_host)
+                            
+                            # Add page images to background if found
+                            if page_images:
+                                background += f"\n\n{page_images}"
+                            
+                            # For sequential decks, don't organize by patient - put all cards directly under deck
+                            cards.append({
+                                "id": card_id,
+                                "question": seq_card.get("question", ""),
+                                "answer": "",  # Sequential cards typically don't have preset answers
+                                "explanation": background,  # Put background content in explanation
+                                "background": background,  # Keep for compatibility
+                                "patient_info": "Sequential Deck",  # Use patient_info key for export compatibility
+                                "deck_title": f"Deck {deck_id_from_url}",  # Use deck_title key for export compatibility
+                                "is_sequential": True,  # Flag to indicate this came from sequential method
+                                "sources": [],
+                                "tags": ["Sequential_Extraction"],
+                                "multi": False,
+                                "freetext": True,  # Treat as freetext since no preset answers
+                                "score_text": "",
+                                "percent": ""
+                            })
+                            
+                            print(f"    📄 Processed sequential card {i+1}/{len(sequential_cards)}: {card_id}")
+                        
+                        print(f"✅ Sequential method successfully extracted {len(cards)} cards")
+                        return cards
+                    else:
+                        print(f"❌ Sequential method found no cards")
+                        # Fall back to patient-based method as last resort
+                        print(f"🔄 Falling back to patient-based method...")
+                
+                except Exception as e:
+                    print(f"❌ Sequential method failed: {e}")
+                    print(f"🔄 Falling back to patient-based method...")
+                
+                # Try patient-based approach as fallback for sequential method failure
                 try:
                     # Navigate back to the deck details page to extract patient information
                     deck_details_url = (
@@ -1423,19 +1785,17 @@ def selenium_scrape_deck(
 
                     if not card_ids:
                         print(
-                            f"❌ No cards found via patient-based method for deck {deck_id_from_url}"
+                            f"❌ Patient-based fallback method also found no cards for deck {deck_id_from_url}"
                         )
-                        sys.exit(f"No cards found for deck {deck_id_from_url}")
+                        sys.exit(f"No cards found for deck {deck_id_from_url} using any method")
 
                     print(
-                        f"✅ Found {len(card_ids)} unique cards via patient-based method"
+                        f"✅ Found {len(card_ids)} unique cards via patient-based fallback method"
                     )
 
                 except Exception as e:
-                    print(f"❌ Error accessing deck via patient-based method: {e}")
-                    sys.exit(
-                        f"Cannot access deck {deck_id_from_url} via patient-based method"
-                    )
+                    print(f"❌ Error accessing deck via patient-based fallback method: {e}")
+                    sys.exit(f"All methods failed for deck {deck_id_from_url}")
             else:
                 # Printdeck page is accessible, proceed with normal method
                 # Find all submit buttons with solution IDs on the printdeck page
@@ -2883,14 +3243,23 @@ table th {
     for card in data:
         deck_title = card.get("deck_title", "Unknown Deck")
         patient_info = card.get("patient_info", "Unknown Patient")
+        
+        # Check if this is a sequential card (no patient organization)
+        is_sequential = card.get("is_sequential", False)
 
         if deck_title not in deck_structure:
             deck_structure[deck_title] = {}
 
-        if patient_info not in deck_structure[deck_title]:
-            deck_structure[deck_title][patient_info] = []
+        # For sequential cards, group directly under deck without patient subdivision
+        if is_sequential:
+            patient_key = "__sequential__"  # Special key for sequential cards
+        else:
+            patient_key = patient_info
 
-        deck_structure[deck_title][patient_info].append(card)
+        if patient_key not in deck_structure[deck_title]:
+            deck_structure[deck_title][patient_key] = []
+
+        deck_structure[deck_title][patient_key].append(card)
 
     # Create hierarchical decks
     decks = []
@@ -2909,13 +3278,82 @@ table th {
 
         # Group by patient only (no deck grouping needed for single deck)
         patient_structure = {}
+        has_sequential_cards = False
+        
         for card in data:
             patient_info = card.get("patient_info", "Unknown Patient")
-            if patient_info not in patient_structure:
-                patient_structure[patient_info] = []
-            patient_structure[patient_info].append(card)
+            is_sequential = card.get("is_sequential", False)
+            
+            if is_sequential:
+                has_sequential_cards = True
+                # For sequential cards, group under deck directly
+                patient_key = "__sequential__"
+            else:
+                patient_key = patient_info
+                
+            if patient_key not in patient_structure:
+                patient_structure[patient_key] = []
+            patient_structure[patient_key].append(card)
 
+        # Handle sequential cards differently - no patient subdivision
+        if has_sequential_cards and "__sequential__" in patient_structure:
+            # For sequential decks, create a single deck with all cards directly under it
+            hierarchical_name = actual_deck_name
+            
+            deck = genanki.Deck(deck_id_counter, hierarchical_name)
+            deck_id_counter += 1
+            
+            sequential_cards = patient_structure["__sequential__"]
+            
+            for i, card in enumerate(sequential_cards):
+                multi_flag = card.get("multi", False)
+                multi = "1" if multi_flag else ""
+                sources_html = "".join(
+                    f"<li>{src}</li>" for src in card.get("sources", [])
+                )
+                model = text_model if card.get("freetext") else mcq_model
+
+                if card.get("freetext"):
+                    fields = [
+                        card["question"],
+                        card["answer"],
+                        card.get("explanation", ""),
+                    ]
+                else:
+                    fields = [
+                        card["question"],
+                        card["answer"],
+                        card.get("explanation", ""),
+                        card.get("score_text", ""),
+                        card.get("percent", ""),
+                        sources_html,
+                        multi,
+                        card["id"],
+                    ]
+
+                # Add simple tags for sequential deck
+                tags = card.get("tags", []) + [
+                    f"Deck_{actual_deck_name.replace(' ', '_')}",
+                    "Sequential_Mode",
+                    f"Question_{i+1}",
+                ]
+
+                deck.add_note(
+                    genanki.Note(
+                        model=model,
+                        fields=fields,
+                        tags=tags,
+                    )
+                )
+            
+            decks.append(deck)
+            print(f"📦 Created sequential deck: {hierarchical_name} ({len(sequential_cards)} cards)")
+        
+        # Handle regular patient-organized cards
         for patient_info, cards in patient_structure.items():
+            if patient_info == "__sequential__":
+                continue  # Already handled above
+                
             # Create simple hierarchy: "DeckName::Patient"
             hierarchical_name = f"{actual_deck_name}::{patient_info}"
 
@@ -3023,54 +3461,109 @@ table th {
         # For regular collections, use the existing Collection::Deck::Patient hierarchy
         for deck_title, patients in deck_structure.items():
             for patient_info, cards in patients.items():
-                # Create deck name with hierarchy: "Collection::Deck::Patient"
-                hierarchical_name = f"{collection_name}::{deck_title}::{patient_info}"
-
-                deck = genanki.Deck(deck_id_counter, hierarchical_name)
-                deck_id_counter += 1
-
-                for card in cards:
-                    multi_flag = card.get("multi", False)
-                    multi = "1" if multi_flag else ""
-                    sources_html = "".join(
-                        f"<li>{src}</li>" for src in card.get("sources", [])
-                    )
-                    model = text_model if card.get("freetext") else mcq_model
-
-                    if card.get("freetext"):
-                        fields = [
-                            card["question"],
-                            card["answer"],
-                            card.get("explanation", ""),
-                        ]
-                    else:
-                        fields = [
-                            card["question"],
-                            card["answer"],
-                            card.get("explanation", ""),
-                            card.get("score_text", ""),
-                            card.get("percent", ""),
-                            sources_html,
-                            multi,
-                            card["id"],
-                        ]
-
-                    # Add comprehensive tags
-                    tags = card.get("tags", []) + [
-                        f"Collection_{collection_name.replace(' ', '_')}",
-                        f"Deck_{deck_title.replace(' ', '_')}",
-                        f"Patient_{patient_info.replace(' ', '_')}",
-                    ]
-
-                    deck.add_note(
-                        genanki.Note(
-                            model=model,
-                            fields=fields,
-                            tags=tags,
+                # Handle sequential cards differently - no patient subdivision in collections
+                if patient_info == "__sequential__":
+                    # For sequential decks in collections, create Collection::Deck hierarchy
+                    hierarchical_name = f"{collection_name}::{deck_title}"
+                    
+                    deck = genanki.Deck(deck_id_counter, hierarchical_name)
+                    deck_id_counter += 1
+                    
+                    for i, card in enumerate(cards):
+                        multi_flag = card.get("multi", False)
+                        multi = "1" if multi_flag else ""
+                        sources_html = "".join(
+                            f"<li>{src}</li>" for src in card.get("sources", [])
                         )
-                    )
+                        model = text_model if card.get("freetext") else mcq_model
 
-                decks.append(deck)
+                        if card.get("freetext"):
+                            fields = [
+                                card["question"],
+                                card["answer"],
+                                card.get("explanation", ""),
+                            ]
+                        else:
+                            fields = [
+                                card["question"],
+                                card["answer"],
+                                card.get("explanation", ""),
+                                card.get("score_text", ""),
+                                card.get("percent", ""),
+                                sources_html,
+                                multi,
+                                card["id"],
+                            ]
+
+                        # Add comprehensive tags for sequential deck in collection
+                        tags = card.get("tags", []) + [
+                            f"Collection_{collection_name.replace(' ', '_')}",
+                            f"Deck_{deck_title.replace(' ', '_')}",
+                            "Sequential_Mode",
+                            f"Question_{i+1}",
+                        ]
+
+                        deck.add_note(
+                            genanki.Note(
+                                model=model,
+                                fields=fields,
+                                tags=tags,
+                            )
+                        )
+                    
+                    decks.append(deck)
+                    print(f"📦 Created sequential deck: {hierarchical_name} ({len(cards)} cards)")
+                
+                else:
+                    # Regular patient-organized cards
+                    # Create deck name with hierarchy: "Collection::Deck::Patient"
+                    hierarchical_name = f"{collection_name}::{deck_title}::{patient_info}"
+
+                    deck = genanki.Deck(deck_id_counter, hierarchical_name)
+                    deck_id_counter += 1
+
+                    for card in cards:
+                        multi_flag = card.get("multi", False)
+                        multi = "1" if multi_flag else ""
+                        sources_html = "".join(
+                            f"<li>{src}</li>" for src in card.get("sources", [])
+                        )
+                        model = text_model if card.get("freetext") else mcq_model
+
+                        if card.get("freetext"):
+                            fields = [
+                                card["question"],
+                                card["answer"],
+                                card.get("explanation", ""),
+                            ]
+                        else:
+                            fields = [
+                                card["question"],
+                                card["answer"],
+                                card.get("explanation", ""),
+                                card.get("score_text", ""),
+                                card.get("percent", ""),
+                                sources_html,
+                                multi,
+                                card["id"],
+                            ]
+
+                        # Add comprehensive tags
+                        tags = card.get("tags", []) + [
+                            f"Collection_{collection_name.replace(' ', '_')}",
+                            f"Deck_{deck_title.replace(' ', '_')}",
+                            f"Patient_{patient_info.replace(' ', '_')}",
+                        ]
+
+                        deck.add_note(
+                            genanki.Note(
+                                model=model,
+                                fields=fields,
+                                tags=tags,
+                            )
+                        )
+
+                    decks.append(deck)
 
     # Create package with all decks
     package = genanki.Package(decks)
