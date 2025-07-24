@@ -25,9 +25,36 @@ from deck_scraping import selenium_scrape_deck, selenium_scrape_collection
 from anki_export import export_hierarchical_apkg, export_apkg
 
 
+def show_help():
+    """Display help information"""
+    print("""
+📖 USAGE:
+  python main.py [URL]
+  python main.py [--help|-h|help]
+
+📋 EXAMPLES:
+  python main.py https://cards.ucalgary.ca/collection/12345
+  python main.py https://cards.ucalgary.ca/details/67890?bag_id=123
+
+🔧 FEATURES:
+  • Converts UCalgary Cards to Anki format
+  • Extracts comprehensive background content and images
+  • Organizes cards by patient with hierarchical deck structure
+  • Supports both individual decks and entire collections
+  • Automatically handles authentication and image processing
+
+💡 TIP: The script will prompt for credentials and save location if not provided.
+    """)
+
+
 def main():
     print("🎯 UCalgary Anki Card Converter")
     print("=" * 50)
+
+    # Check for help flag
+    if len(sys.argv) > 1 and sys.argv[1] in ['-h', '--help', 'help']:
+        show_help()
+        return
 
     # Check for command line argument first
     if len(sys.argv) > 1:
@@ -37,29 +64,8 @@ def main():
         # Prompt URL if no command line argument
         base_url_override = input("Enter UCalgary collection or deck URL: ").strip()
 
-    # Check for card limit as second command line argument
+    # No card limit - process all cards
     card_limit = None
-    if len(sys.argv) > 2:
-        card_limit_arg = sys.argv[2].strip()
-        if card_limit_arg.isdigit():
-            card_limit = int(card_limit_arg)
-            print(f"Using card limit from command line: {card_limit}")
-        else:
-            print(f"Invalid card limit argument: {card_limit_arg}")
-
-    # Ask for card limit if not provided via command line
-    if card_limit is None:
-        print("\n🔧 Testing Options:")
-        print("   - Press Enter to process ALL cards")
-        print("   - Enter a number (e.g., 5) to limit cards for testing")
-        card_limit_input = input("Number of cards to process (optional): ").strip()
-        if card_limit_input and card_limit_input.isdigit():
-            card_limit = int(card_limit_input)
-            print(f"   ⚡ Will process only {card_limit} cards for testing")
-        else:
-            print(f"   📚 Will process ALL cards")
-    else:
-        print(f"   ⚡ Will process only {card_limit} cards for testing")
 
     # Parse URL to determine collection vs deck and extract parameters
     host, is_collection, collection_id, details_url, bag_id = parse_input_url(base_url_override)
@@ -190,7 +196,13 @@ def main():
         )
 
     # Show completion message
-    show_completion_message(output_path, len(cards))
+    if is_collection:
+        deck_count = len(set(card.get("deck_id_source", "unknown") for card in cards))
+        print(f"📊 Collection Summary: {deck_count} decks, {len(cards)} total cards")
+        show_completion_message(output_path, len(cards))
+        print(f"📋 Decks included: {', '.join(set(card.get('deck_title', 'Unknown') for card in cards))}")
+    else:
+        show_completion_message(output_path, len(cards))
     
     print(f"\n🎉 Process complete! Your Anki deck is ready to import.")
 

@@ -6,6 +6,46 @@ import requests
 from selenium.webdriver.common.by import By
 
 
+def normalize_html_formatting(html_content):
+    """
+    Normalize HTML formatting to ensure consistent styling in feedback blocks.
+    Removes inconsistent inline CSS styling and ensures uniform paragraph structure.
+    """
+    if not html_content:
+        return html_content
+
+    # Remove specific inline styles that cause formatting inconsistencies
+    # Target: style="font-family: Aptos, Aptos_EmbeddedFont, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-size: 16px; background-color: rgb(255, 255, 255);"
+    inline_style_pattern = r'style\s*=\s*["\'][^"\']*font-family[^"\']*["\']'
+    html_content = re.sub(inline_style_pattern, "", html_content)
+
+    # Convert span elements with remaining inline styles to simple p tags for consistency
+    # This handles cases where spans are used instead of proper paragraph structure
+    span_to_p_pattern = r"<span[^>]*>(.*?)</span>"
+
+    def replace_span_with_p(match):
+        content = match.group(1)
+        # Only convert to paragraph if it looks like paragraph content (has substantial text)
+        if len(content.strip()) > 20:  # Arbitrary threshold for paragraph-like content
+            return f"<p>{content}</p>"
+        else:
+            return f"<span>{content}</span>"  # Keep as span for short text
+
+    html_content = re.sub(
+        span_to_p_pattern, replace_span_with_p, html_content, flags=re.DOTALL
+    )
+
+    # Clean up any empty or redundant attributes
+    html_content = re.sub(
+        r'\s+style\s*=\s*["\']["\']', "", html_content
+    )  # Remove empty style attributes
+    html_content = re.sub(
+        r"\s+>", ">", html_content
+    )  # Clean up trailing spaces before closing brackets
+
+    return html_content
+
+
 def is_portrait_image(img_src, img_alt, img_title="", img_class=""):
     """
     Determine if an image is likely a portrait/headshot that should be filtered out.
@@ -323,35 +363,3 @@ def extract_images_from_page(driver, session, base_host):
         return images_section
     else:
         return ""
-
-
-def normalize_html_formatting(html_content):
-    """
-    Normalize HTML formatting to ensure consistent styling in feedback blocks.
-    Removes inconsistent inline CSS styling and ensures uniform paragraph structure.
-    """
-    if not html_content:
-        return html_content
-
-    # Remove specific inline styles that cause formatting inconsistencies
-    inline_style_pattern = r'style\s*=\s*["\'][^"\']*font-family[^"\']*["\']'
-    html_content = re.sub(inline_style_pattern, "", html_content)
-
-    # Convert span elements with remaining inline styles to simple p tags for consistency
-    span_to_p_pattern = r"<span[^>]*>(.*?)</span>"
-
-    def replace_span_with_p(match):
-        content = match.group(1)
-        # Only convert to paragraph if it looks like paragraph content (has substantial text)
-        if len(content.strip()) > 20:  # Arbitrary threshold for paragraph-like content
-            return f"<p>{content}</p>"
-        else:
-            return f"<span>{content}</span>"  # Keep as span for short text
-
-    html_content = re.sub(span_to_p_pattern, replace_span_with_p, html_content, flags=re.DOTALL)
-
-    # Clean up any empty or redundant attributes
-    html_content = re.sub(r'\s+style\s*=\s*["\']["\']', "", html_content)  # Remove empty style attributes
-    html_content = re.sub(r"\s+>", ">", html_content)  # Clean up trailing spaces before closing brackets
-
-    return html_content

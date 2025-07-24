@@ -61,6 +61,7 @@ except ImportError:
 def get_chrome_options():
     """Get standardized Chrome options for Selenium"""
     from selenium import webdriver
+    import os
     
     opts = webdriver.ChromeOptions()
     opts.add_argument("--headless")
@@ -74,8 +75,26 @@ def get_chrome_options():
     opts.add_argument("--disable-web-security")
     opts.add_argument("--disable-features=VizDisplayCompositor")
     opts.add_argument("--log-level=3")  # Only show fatal errors
-    opts.add_experimental_option("excludeSwitches", ["enable-logging"])
+    opts.add_argument("--silent")
+    opts.add_argument("--disable-background-timer-throttling")
+    opts.add_argument("--disable-backgrounding-occluded-windows")
+    opts.add_argument("--disable-renderer-backgrounding")
+    opts.add_argument("--disable-dev-tools")
+    opts.add_argument("--disable-infobars")
+    opts.add_argument("--disable-notifications")
+    # Set remote debugging port to 0 to disable it
+    opts.add_argument("--remote-debugging-port=0")
+    opts.add_argument("--no-first-run")
+    opts.add_argument("--no-default-browser-check")
+    opts.add_experimental_option("excludeSwitches", ["enable-logging", "enable-automation", "enable-development-tools"])
     opts.add_experimental_option("useAutomationExtension", False)
+    
+    # Redirect Chrome logs to null to suppress DevTools messages
+    if os.name == 'nt':  # Windows
+        opts.add_argument("--log-file=NUL")
+    else:  # Unix-like
+        opts.add_argument("--log-file=/dev/null")
+    
     opts.add_experimental_option(
         "prefs",
         {
@@ -83,6 +102,53 @@ def get_chrome_options():
         },
     )
     return opts
+
+
+def setup_driver_with_output_suppression():
+    """Setup Chrome driver with output suppression for DevTools messages"""
+    import sys
+    import os
+    import contextlib
+    from selenium import webdriver
+    
+    # Context manager to suppress stdout/stderr temporarily during driver creation
+    @contextlib.contextmanager
+    def suppress_chrome_output():
+        if os.name == 'nt':  # Windows
+            import msvcrt
+            import ctypes
+            from ctypes import wintypes
+            
+            # Temporarily redirect stdout/stderr
+            old_stdout = sys.stdout
+            old_stderr = sys.stderr
+            try:
+                with open(os.devnull, 'w') as devnull:
+                    sys.stdout = devnull
+                    sys.stderr = devnull
+                    yield
+            finally:
+                sys.stdout = old_stdout
+                sys.stderr = old_stderr
+        else:
+            # Unix-like systems
+            old_stdout = sys.stdout
+            old_stderr = sys.stderr
+            try:
+                with open(os.devnull, 'w') as devnull:
+                    sys.stdout = devnull
+                    sys.stderr = devnull
+                    yield
+            finally:
+                sys.stdout = old_stdout
+                sys.stderr = old_stderr
+    
+    # Create driver with suppressed output
+    opts = get_chrome_options()
+    with suppress_chrome_output():
+        driver = webdriver.Chrome(options=opts)
+    
+    return driver
 
 
 def setup_driver_print_override(driver):
@@ -204,32 +270,6 @@ def prompt_credentials(base_host):
                 print(f"Please try again ({attempt + 1}/3 attempts)")
     
     sys.exit("❌ Failed to login after 3 attempts")
-
-
-def prompt_save_location(default_filename):
-    """Prompt user for save location with GUI or CLI fallback"""
-    if HAS_GUI:
-        try:
-            root = tk.Tk()
-            root.withdraw()  # Hide the main window
-            
-            file_path = filedialog.asksaveasfilename(
-                title="Save Anki deck as...",
-                defaultextension=".apkg",
-                filetypes=[("Anki deck files", "*.apkg"), ("All files", "*.*")],
-                initialvalue=default_filename
-            )
-            
-            root.destroy()
-            return file_path if file_path else None
-            
-        except Exception as e:
-            print(f"⚠️ GUI file dialog failed: {e}")
-            # Fall through to CLI prompt
-    
-    # CLI fallback
-    save_path = input(f"💾 Enter save path (default: {default_filename}): ").strip()
-    return save_path if save_path else default_filename
 
 
 def prompt_save_location(default_filename):

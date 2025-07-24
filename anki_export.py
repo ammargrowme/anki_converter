@@ -393,7 +393,6 @@ table th {
                 _add_card_to_deck(deck, card, i, actual_deck_name, mcq_model, text_model, is_sequential=True)
             
             decks.append(deck)
-            print(f"📦 Created sequential deck: {hierarchical_name} ({len(sequential_cards)} cards)")
         
         # Handle regular patient-organized cards
         for patient_info, cards in patient_structure.items():
@@ -454,8 +453,8 @@ table th {
     package = genanki.Package(decks)
     package.write_to_file(path)
 
-    print(f"[+] HIERARCHICAL APKG → {path}")
-    print(f"📊 Created {len(decks)} sub-decks with hierarchical structure")
+    print(f"✅ Created Anki deck: {path}")
+    print(f"📊 Generated {len(decks)} sub-decks with hierarchical structure")
 
 
 def _add_card_to_deck(deck, card, index, deck_title, mcq_model, text_model, patient_info=None, 
@@ -591,4 +590,4 @@ hr#answer-divider { border: none; border-top: 1px solid #888; margin: 16px 0; }
 
     package = genanki.Package([deck])
     package.write_to_file(path)
-    print(f"[+] Simple APKG → {path}")
+    print(f"✅ Created Anki deck: {path}")

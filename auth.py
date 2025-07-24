@@ -20,5 +20,3 @@ def selenium_login(driver, email, password, base_host):
 
     if "Logout" not in driver.page_source:
         raise RuntimeError("Login failed – check credentials")
-        
-    print("✅ Login successful")

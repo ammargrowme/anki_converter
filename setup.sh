@@ -6,7 +6,11 @@ set -e
 # Compatible with macOS, Linux, and Windows (via Git Bash/WSL)
 
 echo "🚀 Setting up UCalgary Anki Converter..."
-echo "================================================"
+echo "======        echo "🐧 Configuring Linux permissions..."
+        chmod +x main.py 2>/dev/null || true
+        chmod +x export_ucalgary_anki.py 2>/dev/null || true
+        chmod +x export_ucalgary_anki_debug.py 2>/dev/null || true
+        chmod +x setup.sh======================================="
 
 # Detect OS for platform-specific setup
 OS="unknown"
@@ -274,8 +278,12 @@ case $OS in
         # Remove quarantine attributes that might block execution
         echo "🍎 Configuring macOS security..."
         xattr -d com.apple.quarantine . 2>/dev/null || true
+        xattr -d com.apple.quarantine main.py 2>/dev/null || true
         xattr -d com.apple.quarantine export_ucalgary_anki.py 2>/dev/null || true
-        chmod +x export_ucalgary_anki.py
+        xattr -d com.apple.quarantine export_ucalgary_anki_debug.py 2>/dev/null || true
+        chmod +x main.py 2>/dev/null || true
+        chmod +x export_ucalgary_anki.py 2>/dev/null || true
+        chmod +x export_ucalgary_anki_debug.py 2>/dev/null || true
         ;;
     "linux")
         echo "� Configuring Linux permissions..."
@@ -362,7 +370,9 @@ fi
 
 source .venv/bin/activate
 echo "✅ Virtual environment activated"
-echo "🚀 Run: python export_ucalgary_anki.py"
+echo "🚀 Choose your version:"
+echo "   python main.py               # Modular (recommended)"
+echo "   python export_ucalgary_anki_debug.py  # Debug version"
 EOF
 chmod +x activate.sh
 
@@ -373,10 +383,11 @@ echo Activating Python virtual environment...
 call .venv\Scripts\activate.bat
 echo.
 echo Virtual environment activated
-echo Run: python export_ucalgary_anki.py
+echo Run your preferred version:
+echo   python main.py               # Modular (recommended)
+echo   python export_ucalgary_anki_debug.py  # Debug version
 echo.
 echo This window will stay open so you can run commands.
-echo To run the converter, type: python export_ucalgary_anki.py
 echo To exit, type: exit
 echo.
 cmd /k
@@ -388,7 +399,9 @@ Write-Host "🔌 Activating Python virtual environment..." -ForegroundColor Gree
 & .\.venv\Scripts\Activate.ps1
 Write-Host ""
 Write-Host "✅ Virtual environment activated" -ForegroundColor Green  
-Write-Host "🚀 Run: python export_ucalgary_anki.py" -ForegroundColor Yellow
+Write-Host "🚀 Choose your version:" -ForegroundColor Yellow
+Write-Host "   python main.py               # Modular (recommended)" -ForegroundColor Yellow
+Write-Host "   python export_ucalgary_anki_debug.py  # Debug version" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "This PowerShell window will stay open for you to run commands." -ForegroundColor Cyan
 Write-Host "Type 'exit' to close when done." -ForegroundColor Cyan
@@ -415,7 +428,13 @@ else
 fi
 echo ""
 echo "2️⃣  Run the converter:"
-echo "   python export_ucalgary_anki.py"
+echo "   # Choose your preferred version:"
+echo "   "
+echo "   # Modular version (recommended):"
+echo "   python main.py"
+echo "   "
+echo "   # Debug version (for troubleshooting):"
+echo "   python export_ucalgary_anki_debug.py"
 echo ""
 echo "3️⃣  Follow the prompts to:"
 echo "   • Enter your UCalgary credentials (saved securely)"
@@ -426,11 +445,14 @@ else
     echo "   • Type the path where you want to save your .apkg file"
 fi
 echo ""
+echo "💡 Optional: Test your setup first with: python test_setup.py"
+echo ""
 echo "📁 Files created:"
 echo "   • .venv/          - Python virtual environment"
 echo "   • activate.sh     - Quick activation script (Unix)"
 echo "   • activate.bat    - Quick activation script (Windows Command Prompt)"
 echo "   • activate.ps1    - Quick activation script (Windows PowerShell)"
+echo "   • test_setup.py   - System verification script"
 echo ""
 echo "🔒 Security notes:"
 echo "   • Credentials saved in: ~/.uc_anki_config.json"
@@ -494,10 +516,23 @@ else
 fi
 
 # Check main script
-if [[ -f "export_ucalgary_anki.py" ]]; then
-    echo "✅ Main Script: Ready"
+MAIN_SCRIPT_READY=false
+if [[ -f "main.py" ]]; then
+    echo "✅ Main Script (Modular): Ready"
+    MAIN_SCRIPT_READY=true
+elif [[ -f "export_ucalgary_anki.py" ]]; then
+    echo "✅ Main Script (Modular): Ready"
+    MAIN_SCRIPT_READY=true
+fi
+
+if [[ -f "export_ucalgary_anki_debug.py" ]]; then
+    echo "✅ Debug Script: Ready"
 else
-    echo "❌ Main Script: Missing"
+    echo "⚠️  Debug Script: Missing"
+fi
+
+if [[ $MAIN_SCRIPT_READY == false ]]; then
+    echo "❌ Main Script: Missing (need main.py or export_ucalgary_anki.py)"
     SYSTEM_READY=false
 fi
 

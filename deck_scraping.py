@@ -4,16 +4,17 @@ import os
 import time
 import re
 import requests
+import sys
 from tqdm import tqdm
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
-from utils import get_chrome_options, setup_driver_print_override
+from utils import get_chrome_options, setup_driver_print_override, setup_driver_with_output_suppression
 from auth import selenium_login
-from image_processing import extract_images_from_page
-from content_extraction import extract_comprehensive_background, extract_patients_from_deck_page, extract_deck_metadata
+from image_processing import extract_images_from_page, normalize_html_formatting
+from content_extraction import extract_comprehensive_background, extract_patients_from_deck_page, extract_deck_metadata, add_patient_info_to_cards
 from sequential_extraction import extract_cards_sequential_mode
 
 
@@ -26,16 +27,12 @@ def selenium_scrape_deck(
     2. Sequential mode (for non-print accessible decks)
     3. Patient-based extraction (final fallback)
     """
-    opts = get_chrome_options()
-    driver = webdriver.Chrome(options=opts)
+    driver = setup_driver_with_output_suppression()
     setup_driver_print_override(driver)
 
     try:
-        print("Loading screen...")
-        print("Logging in...")
-        # 1) LOGIN
+        # Login
         selenium_login(driver, email, password, base_host)
-        print("Logged in successfully")
 
         # If a details URL is provided, convert it to printdeck URL to get all cards
         if details_url:
@@ -116,8 +113,6 @@ def selenium_scrape_deck(
                                 "score_text": "",
                                 "percent": ""
                             })
-                            
-                            print(f"    📄 Processed sequential card {i+1}/{len(sequential_cards)}: {card_id}")
                         
                         print(f"✅ Sequential method successfully extracted {len(cards)} cards")
                         return cards
@@ -176,7 +171,6 @@ def _extract_cards_printdeck(driver, base_host, deck_id, bag_id, card_limit):
 
     # Extract patient information from the deck page
     patients_list = extract_patients_from_deck_page(driver, base_host, deck_id, bag_id)
-    print(f"Available patients for deck {deck_id}: {patients_list}")
 
     return _extract_card_content(driver, base_host, card_ids, patients_list, deck_id)
 
@@ -184,12 +178,9 @@ def _extract_cards_printdeck(driver, base_host, deck_id, bag_id, card_limit):
 def _extract_cards_patient_based(driver, base_host, deck_id, bag_id, card_limit):
     """Extract cards using patient-based method (fallback)"""
     try:
-        # Navigate back to the deck details page to extract patient information
         deck_details_url = f"{base_host}/details/{deck_id}?bag_id={bag_id}"
         driver.get(deck_details_url)
         time.sleep(2)
-
-        print(f"🔍 Extracting patients from deck {deck_id}...")
 
         # Extract all patient elements with their rel attributes (patient IDs)
         patient_elements = driver.find_elements(
@@ -228,14 +219,11 @@ def _extract_cards_patient_based(driver, base_host, deck_id, bag_id, card_limit)
 
                 if patient_id:
                     patients_data.append({"id": patient_id, "name": patient_name})
-                    print(f"  👤 Found patient: {patient_name} (ID: {patient_id})")
-            except Exception as e:
-                print(f"  ⚠️  Error extracting patient data: {e}")
+            except Exception:
+                pass  # Silently skip problematic patients
 
         if not patients_data:
             raise Exception(f"No valid patient data extracted for deck {deck_id}")
-
-        print(f"✅ Found {len(patients_data)} patients for deck {deck_id}")
 
         # Apply card limit for testing if specified
         if card_limit and card_limit < len(patients_data):
@@ -253,7 +241,6 @@ def _extract_cards_patient_based(driver, base_host, deck_id, bag_id, card_limit)
 
             # Visit the patient page to find their card
             patient_url = f"{base_host}/patient/{patient_id}"
-            print(f"  🔗 Visiting patient page: {patient_url}")
             driver.get(patient_url)
             time.sleep(2)
 
@@ -264,8 +251,6 @@ def _extract_cards_patient_based(driver, base_host, deck_id, bag_id, card_limit)
 
         if not card_ids:
             raise Exception(f"Patient-based fallback method also found no cards for deck {deck_id}")
-
-        print(f"✅ Found {len(card_ids)} unique cards via patient-based fallback method")
         return _extract_card_content(driver, base_host, card_ids, patients_list, deck_id)
 
     except Exception as e:
@@ -310,7 +295,6 @@ def _find_card_for_patient(driver, patient_name):
                     continue
 
                 if card_id:
-                    print(f"    ✅ Found card {card_id} for patient {patient_name}")
                     return card_id
 
         except Exception as e:
@@ -334,7 +318,6 @@ def _find_card_for_patient(driver, patient_name):
                     card_match = re.search(r"/card/(\d+)", current_url)
                     if card_match:
                         card_id = card_match.group(1)
-                        print(f"    ✅ Found card {card_id} for patient {patient_name} via click")
                         return card_id
                 except Exception as e:
                     print(f"    ⚠️  Error clicking element: {e}")
@@ -389,15 +372,6 @@ def _extract_card_content(driver, base_host, card_ids, patients_list, deck_id):
             else:
                 background = page_images
 
-        # Debug background content
-        if background:
-            print(f"  📄 Extracted background content ({len(background)} chars)")
-            text_preview = re.sub(r"<[^>]+>", "", background)[:200]
-            preview = text_preview + "..." if len(text_preview) > 200 else text_preview
-            print(f"  Preview: {preview}")
-        else:
-            print(f"  ⚠️  No background content found for card {cid}")
-
         # Extract question
         try:
             qel = driver.find_element(
@@ -447,9 +421,34 @@ def _extract_card_content(driver, base_host, card_ids, patients_list, deck_id):
             })
         else:
             # Extract multiple choice options and answers
-            card_data = _extract_mcq_content(driver, cid, question, background, patient_info, deck_id, multi_flag)
+            card_data = _extract_mcq_content(driver, cid, question, background, patient_info, deck_id, multi_flag, base_host)
             if card_data:
                 cards.append(card_data)
+
+    # Add patient information to all cards before returning
+    cards = add_patient_info_to_cards(cards, patients_list)
+
+    # Process images in explanations/feedback for all cards
+    print(f"🖼️ Processing images in card explanations...")
+    sess = requests.Session()
+    for c in driver.get_cookies():
+        sess.cookies.set(c["name"], c["value"])
+
+    for card in cards:
+        if card.get("explanation") and (
+            "<img" in card["explanation"] or "src=" in card["explanation"]
+        ):
+            # Process images in the explanation/feedback
+            try:
+                from image_processing import extract_images_from_html
+                processed_explanation, extracted_images = extract_images_from_html(
+                    card["explanation"], sess, base_host
+                )
+                card["explanation"] = processed_explanation
+                card["images"] = extracted_images
+                print(f"  🖼️ Processed {len(extracted_images)} images for card {card['id']}")
+            except Exception as e:
+                print(f"  ⚠️ Warning: Error processing images for card {card['id']}: {e}")
 
     return cards
 
@@ -490,8 +489,6 @@ def _extract_patient_info_from_card(driver, default_patient_info, card_id):
 def _extract_fallback_text(driver, existing_background):
     """Extract fallback text content if main background extraction failed"""
     try:
-        print(f"  🔍 Background content insufficient ({len(existing_background) if existing_background else 0} chars), trying fallback extraction...")
-        
         # Look for any text content in the card container
         card_containers = driver.find_elements(By.CSS_SELECTOR, "body > div > div.container.card")
         if not card_containers:
@@ -522,55 +519,131 @@ def _extract_fallback_text(driver, existing_background):
 
         if text_parts:
             background = "<br/>".join(text_parts[:3])  # Limit to 3 parts
-            print(f"  📝 Extracted fallback text content: {len(background)} chars")
             return background
         
-    except Exception as e:
-        print(f"  ⚠️ Error extracting text content: {e}")
+    except Exception:
+        pass  # Silently handle errors
     
     return existing_background
 
 
-def _extract_mcq_content(driver, card_id, question, background, patient_info, deck_id, multi_flag):
+def _extract_mcq_content(driver, card_id, question, background, patient_info, deck_id, multi_flag, base_host="https://cards.ucalgary.ca"):
     """Extract multiple choice question content"""
     try:
-        # Extract answer choices
-        labels = driver.find_elements(By.CSS_SELECTOR, "div.options label")
-        if not labels:
-            print(f"  ⚠️  No answer choices found for card {card_id}")
+        # Scrape options and fetch correct answers via API (matching debug file exactly)
+        option_divs = driver.find_elements(
+            By.CSS_SELECTOR,
+            "#workspace > div.solution.container > form > div.options > div.option",
+        )
+        # Extract IDs and texts (matching debug file method)
+        option_info = []
+        for div in option_divs:
+            try:
+                inp = div.find_element(By.TAG_NAME, "input")
+                opt_id = inp.get_attribute("value")
+                label = div.find_element(By.TAG_NAME, "label")
+                opt_text = label.text.strip()
+                if opt_id and opt_text:
+                    option_info.append((opt_id, opt_text))
+            except Exception:
+                pass
+
+        if not option_info:
+            print(f"  ⚠️  No answer options found for card {card_id}")
             return None
 
-        choices = []
-        for lbl in labels:
-            choice_text = lbl.text.strip()
-            if choice_text:
-                choices.append(choice_text)
+        # Prepare session with Selenium cookies
+        sess = requests.Session()
+        for c in driver.get_cookies():
+            sess.cookies.set(c["name"], c["value"])
 
-        if not choices:
-            print(f"  ⚠️  No valid choices extracted for card {card_id}")
-            return None
+        # Call solution endpoint to get correct answer IDs (improved method)
+        sol_url = f"{base_host}/solution/{card_id}/"
 
-        # Create formatted question with options
-        formatted_question = f"{question}\n\n"
-        for i, choice in enumerate(choices):
-            choice_id = f"choice_{card_id}_{i}"
-            input_type = "checkbox" if multi_flag else "radio"
-            formatted_question += f'<div class="option"><input type="{input_type}" id="{choice_id}" value="{choice}"><label for="{choice_id}">{choice}</label></div>\n'
+        # Try empty guess first to get the correct answers
+        empty_payload = [("timer", "1")]
+        resp = sess.post(sol_url, data=empty_payload)
+        json_resp = {}
+        try:
+            json_resp = resp.json()
+        except Exception:
+            # If that fails, try with all options (fallback to original method)
+            payload = [("guess[]", oid) for oid, _ in option_info] + [
+                ("timer", "2")
+            ]
+            resp = sess.post(sol_url, data=payload)
+            try:
+                json_resp = resp.json()
+            except Exception:
+                json_resp = {}
+                print(f"  ⚠️  Could not parse solution response for card {card_id}")
+
+        correct_ids = json_resp.get("answers", [])
+        feedback = json_resp.get("feedback", "").strip()
+        # Normalize HTML formatting to ensure consistent styling
+        from image_processing import normalize_html_formatting
+        feedback = normalize_html_formatting(feedback)
+        score_text = json_resp.get("scoreText", "").strip()
+        sources = []
+
+        # Compute percentage score - use actual score if available
+        raw_score = json_resp.get("score", 0)
+        if isinstance(raw_score, (int, float)):
+            percent = f"{raw_score}%"
+        else:
+            # Try to extract percentage from scoreText if score field is unreliable
+            import re
+            score_match = re.search(r"(\d+)%", score_text)
+            if score_match:
+                percent = f"{score_match.group(1)}%"
+            else:
+                percent = "0%"
+        
+        # Build options and correct_answers lists by matching IDs
+        options = [text for oid, text in option_info]
+        correct_answers = [
+            text for oid, text in option_info if oid in correct_ids
+        ]
+        if not correct_answers and options:
+            correct_answers = [options[0]]  # Fallback to first option
+        
+        # Format choices for front
+        # Build clickable options HTML with proper styling
+        input_type = "checkbox" if multi_flag else "radio"
+        options_html = "".join(
+            f'<div class="option" style="margin: 5px 0; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: white; color: black;">'
+            f'<input type="{input_type}" name="choice" id="choice_{card_id}_{i}" value="{opt}" style="margin-right: 8px;">'
+            f'<label for="choice_{card_id}_{i}" style="color: black; cursor: pointer;">{opt}</label>'
+            f"</div>"
+            for i, opt in enumerate(options)
+        )
+        
+        if background:
+            full_q = f'<div class="background">{background}</div><div class="question">{question}</div><div class="options">{options_html}</div>'
+        else:
+            full_q = f'<div class="question">{question}</div><div class="options">{options_html}</div>'
+        
+        answer = (
+            " ||| ".join(correct_answers)
+            if correct_answers
+            else "[No Answer Found]"
+        )
 
         return {
             "id": card_id,
-            "question": formatted_question,
-            "answer": " ||| ".join(choices),  # Default - will be updated with correct answers
-            "explanation": background,
+            "question": full_q,
+            "answer": answer,
+            "explanation": feedback if feedback else background,
+            "score_text": score_text,
+            "sources": sources,
+            "tags": ["MCQ", "Multi-select" if multi_flag else "Single-select"],
+            "images": [],
+            "multi": multi_flag,
+            "percent": percent,
             "background": background,
             "patient_info": patient_info,
             "deck_title": f"Deck {deck_id}",
-            "sources": [],
-            "tags": ["MCQ", "Multi-select" if multi_flag else "Single-select"],
-            "multi": multi_flag,
-            "freetext": False,
-            "score_text": f"0 / {len(choices)}",
-            "percent": "0%"
+            "freetext": False
         }
 
     except Exception as e:
@@ -588,32 +661,52 @@ def selenium_scrape_collection(collection_id, email, password, base_host, card_l
         decks_info: Dictionary with deck metadata
         collection_title: Name of the collection
     """
-    opts = get_chrome_options()
-    driver = webdriver.Chrome(options=opts)
+    driver = setup_driver_with_output_suppression()
     setup_driver_print_override(driver)
 
     try:
-        print("Loading collection screen...")
-        print("Logging in...")
-        
-        # Login first
+        # Login
         selenium_login(driver, email, password, base_host)
-        print("Logged in successfully")
 
         # Navigate to the collection page
         collection_url = f"{base_host}/collection/{collection_id}"
-        print(f"🔍 Accessing collection: {collection_url}")
         driver.get(collection_url)
         time.sleep(3)
 
         # Extract collection title
         try:
-            title_elem = driver.find_element(By.CSS_SELECTOR, "h1, .collection-title, .page-title")
-            collection_title = title_elem.text.strip()
-        except NoSuchElementException:
+            # First try the specific bag-name selector for accurate collection name
+            try:
+                bag_name_elem = driver.find_element(By.CSS_SELECTOR, "h3.bag-name")
+                potential_title = bag_name_elem.text.strip()
+                if potential_title and len(potential_title) > 3:
+                    collection_title = potential_title
+                else:
+                    raise NoSuchElementException("bag-name element found but empty")
+            except NoSuchElementException:
+                # Fallback to other selectors
+                title_selectors = [
+                    "h1",
+                    "h2", 
+                    "h3",
+                    ".collection-title",
+                    ".title",
+                    ".header h1",
+                    ".page-title",
+                ]
+                
+                collection_title = f"Collection {collection_id}"  # Default
+                for selector in title_selectors:
+                    try:
+                        title_elem = driver.find_element(By.CSS_SELECTOR, selector)
+                        potential_title = title_elem.text.strip()
+                        if potential_title and len(potential_title) > 3:
+                            collection_title = potential_title
+                            break
+                    except NoSuchElementException:
+                        continue
+        except Exception:
             collection_title = f"Collection {collection_id}"
-
-        print(f"📚 Collection: {collection_title}")
 
         # Find all deck links in the collection
         deck_links = driver.find_elements(By.CSS_SELECTOR, "a[href*='/details/']")
@@ -632,11 +725,29 @@ def selenium_scrape_collection(collection_id, email, password, base_host, card_l
         for link in deck_links:
             href = link.get_attribute("href")
             if "/details/" in href:
-                # Extract deck metadata
-                deck_info = extract_deck_metadata(driver, link, base_host)
-                if deck_info:
+                # Extract deck information manually from href
+                try:
+                    deck_id = href.split("/details/")[1].split("?")[0]
+                    # Get bag_id from URL parameters
+                    parsed_href = urlparse(href)
+                    bag_id = parse_qs(parsed_href.query).get("bag_id", [collection_id])[0]
+                    
+                    # Get deck title from link text or default
+                    deck_title = link.text.strip() or f"Deck {deck_id}"
+                    
+                    deck_info = {
+                        "id": deck_id,
+                        "deck_id": deck_id,
+                        "bag_id": bag_id,
+                        "title": deck_title,
+                        "details_url": href,
+                    }
+                    
                     decks_info[deck_info["id"]] = deck_info
                     deck_urls.append(href)
+                except Exception as e:
+                    print(f"⚠️ Could not parse deck link {href}: {e}")
+                    continue
 
         print(f"📦 Found {len(deck_urls)} decks in collection")
 
@@ -650,9 +761,9 @@ def selenium_scrape_collection(collection_id, email, password, base_host, card_l
         # Scrape each deck in the collection
         all_cards = []
         
-        for i, deck_url in enumerate(deck_urls):
+        for i, deck_info in enumerate(decks_info.values()):
             try:
-                print(f"\n📖 Scraping deck {i+1}/{len(deck_urls)}: {deck_url}")
+                print(f"\n📖 Scraping deck {i+1}/{len(decks_info)}: {deck_info['title']}")
                 
                 # Use selenium_scrape_deck for each individual deck
                 deck_cards = selenium_scrape_deck(
@@ -660,27 +771,34 @@ def selenium_scrape_collection(collection_id, email, password, base_host, card_l
                     email=email,
                     password=password,
                     base_host=base_host,
-                    bag_id=None,  # Will be extracted from URL
-                    details_url=deck_url,
+                    bag_id=deck_info["bag_id"],
+                    details_url=deck_info["details_url"],
                     card_limit=None  # Don't limit individual deck cards
                 )
                 
                 if deck_cards:
-                    # Add collection information to each card
+                    # Add deck information to each card for organization
                     for card in deck_cards:
+                        card["deck_title"] = deck_info["title"]
+                        card["deck_id_source"] = deck_info["deck_id"]
                         card["collection_id"] = collection_id
                         card["collection_title"] = collection_title
+                        # Add deck name as a tag for organization in Anki
+                        if "tags" not in card:
+                            card["tags"] = []
+                        card["tags"].append(f"Deck_{deck_info['deck_id']}")
+                        card["tags"].append(deck_info["title"].replace(" ", "_"))
                     
                     all_cards.extend(deck_cards)
-                    print(f"  ✅ Added {len(deck_cards)} cards from deck")
+                    print(f"  ✅ Added {len(deck_cards)} cards from '{deck_info['title']}'")
                 else:
                     print(f"  ⚠️  No cards found in deck")
 
             except Exception as e:
-                print(f"  ❌ Error scraping deck {deck_url}: {e}")
+                print(f"  ❌ Error scraping deck '{deck_info['title']}': {e}")
                 continue
 
-        print(f"\n✅ Collection scraping complete: {len(all_cards)} total cards from {len(deck_urls)} decks")
+        print(f"\n✅ Collection scraping complete: {len(all_cards)} total cards from {len(decks_info)} decks")
         
         return all_cards, decks_info, collection_title
 
