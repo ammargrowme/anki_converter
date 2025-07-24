@@ -10,6 +10,9 @@ webdriver-manager>=4.0.0
 # Anki deck generation
 genanki>=0.13.0
 
+# Image processing for portrait detection
+Pillow>=10.0.0
+
 # Progress bars and user interface
 tqdm>=4.65.0
 

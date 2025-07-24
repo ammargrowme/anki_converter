@@ -153,6 +153,96 @@ def analyze_apkg(apkg_path):
                     )
                     print(f"       Note IDs: {note_ids}")
 
+            # Enhanced duplicate analysis - check actual questions and answers
+            print(f"\n🔍 ENHANCED DUPLICATE ANALYSIS:")
+            question_texts = {}
+            answer_texts = {}
+            true_duplicates = {}
+
+            for note_id, fields in all_notes:
+                field_list = fields.split("\x1f")
+                if len(field_list) >= 2:
+                    front_content = field_list[0]
+                    back_content = field_list[1] if len(field_list) > 1 else ""
+
+                    # Extract just the question text (remove images and HTML)
+                    question_text = extract_question_text(front_content)
+                    # Remove base64 image data from question
+                    question_text = re.sub(r'data:image/[^"\']*', "", question_text)
+                    question_text = re.sub(r"\s+", " ", question_text).strip()
+
+                    # Extract answer text
+                    answer_text = extract_question_text(back_content)
+                    answer_text = re.sub(r'data:image/[^"\']*', "", answer_text)
+                    answer_text = re.sub(r"\s+", " ", answer_text).strip()
+
+                    # Create a signature for the question (first 200 chars)
+                    question_signature = (
+                        question_text[:200]
+                        if len(question_text) > 200
+                        else question_text
+                    )
+
+                    # Track questions
+                    if question_signature in question_texts:
+                        if question_signature not in true_duplicates:
+                            true_duplicates[question_signature] = []
+                        true_duplicates[question_signature].append(
+                            {
+                                "note_id": note_id,
+                                "question": question_text,
+                                "answer": (
+                                    answer_text[:100] + "..."
+                                    if len(answer_text) > 100
+                                    else answer_text
+                                ),
+                            }
+                        )
+                    else:
+                        question_texts[question_signature] = {
+                            "note_id": note_id,
+                            "question": question_text,
+                            "answer": (
+                                answer_text[:100] + "..."
+                                if len(answer_text) > 100
+                                else answer_text
+                            ),
+                        }
+
+            # Report true duplicates
+            if true_duplicates:
+                print(f"\n🚨 TRUE DUPLICATE QUESTIONS FOUND:")
+                for i, (question_sig, duplicates) in enumerate(true_duplicates.items()):
+                    print(f"\n--- 🔄 DUPLICATE GROUP {i+1} ---")
+                    print(f"📝 Question: {question_sig}")
+
+                    # Show original
+                    original = question_texts[question_sig]
+                    print(f"  📌 Original Note ID: {original['note_id']}")
+                    print(f"  💬 Answer: {original['answer']}")
+
+                    # Show duplicates
+                    for j, dup in enumerate(duplicates):
+                        print(f"  🔄 Duplicate {j+1} Note ID: {dup['note_id']}")
+                        print(f"      💬 Answer: {dup['answer']}")
+
+                        # Check if answers are different
+                        if dup["answer"] != original["answer"]:
+                            print(f"      ⚠️  DIFFERENT ANSWER DETECTED!")
+            else:
+                print(
+                    f"✅ NO TRUE DUPLICATE QUESTIONS FOUND - All questions are unique!"
+                )
+
+            print(f"\n📊 UNIQUE QUESTIONS SUMMARY:")
+            print(f"  📝 Total unique questions: {len(question_texts)}")
+            print(f"  🔄 Total duplicate groups: {len(true_duplicates)}")
+
+            # Show all unique questions
+            print(f"\n📋 ALL UNIQUE QUESTIONS:")
+            for i, (question_sig, data) in enumerate(question_texts.items()):
+                print(f"\n{i+1:2d}. Note ID {data['note_id']}: {question_sig}")
+
             # Detailed analysis of first few notes
             print(f"\n🔍 DETAILED ANALYSIS (First 3 notes):")
             for i, (note_id, fields) in enumerate(all_notes[:3]):
