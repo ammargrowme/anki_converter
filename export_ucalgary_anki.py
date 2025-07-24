@@ -280,6 +280,48 @@ def extract_images_from_html(html_content, session, base_host):
     return html_content, extracted_images
 
 
+def normalize_html_formatting(html_content):
+    """
+    Normalize HTML formatting to ensure consistent styling in feedback blocks.
+    Removes inconsistent inline CSS styling and ensures uniform paragraph structure.
+    """
+    if not html_content:
+        return html_content
+
+    import re
+
+    # Remove specific inline styles that cause formatting inconsistencies
+    # Target: style="font-family: Aptos, Aptos_EmbeddedFont, Aptos_MSFontService, Calibri, Helvetica, sans-serif; font-size: 16px; background-color: rgb(255, 255, 255);"
+    inline_style_pattern = r'style\s*=\s*["\'][^"\']*font-family[^"\']*["\']'
+    html_content = re.sub(inline_style_pattern, "", html_content)
+
+    # Convert span elements with remaining inline styles to simple p tags for consistency
+    # This handles cases where spans are used instead of proper paragraph structure
+    span_to_p_pattern = r"<span[^>]*>(.*?)</span>"
+
+    def replace_span_with_p(match):
+        content = match.group(1)
+        # Only convert to paragraph if it looks like paragraph content (has substantial text)
+        if len(content.strip()) > 20:  # Arbitrary threshold for paragraph-like content
+            return f"<p>{content}</p>"
+        else:
+            return f"<span>{content}</span>"  # Keep as span for short text
+
+    html_content = re.sub(
+        span_to_p_pattern, replace_span_with_p, html_content, flags=re.DOTALL
+    )
+
+    # Clean up any empty or redundant attributes
+    html_content = re.sub(
+        r'\s+style\s*=\s*["\']["\']', "", html_content
+    )  # Remove empty style attributes
+    html_content = re.sub(
+        r"\s+>", ">", html_content
+    )  # Clean up trailing spaces before closing brackets
+
+    return html_content
+
+
 def extract_images_from_page(driver, session, base_host):
     """
     Extract images directly from the current page using multiple selectors.
@@ -1308,6 +1350,8 @@ def selenium_scrape_deck(
 
                 correct_ids = json_resp.get("answers", [])
                 feedback = json_resp.get("feedback", "").strip()
+                # Normalize HTML formatting to ensure consistent styling
+                feedback = normalize_html_formatting(feedback)
                 score_text = json_resp.get("scoreText", "").strip()
                 sources = []
 
@@ -1601,6 +1645,8 @@ def selenium_scrape_deck(
 
                 correct_ids = json_resp.get("answers", [])
                 feedback = json_resp.get("feedback", "").strip()
+                # Normalize HTML formatting to ensure consistent styling
+                feedback = normalize_html_formatting(feedback)
                 score_text = json_resp.get("scoreText", "").strip()
                 sources = []
 
