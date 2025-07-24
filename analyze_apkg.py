@@ -10,6 +10,20 @@ import os
 import re
 
 
+def extract_question_text(html_content):
+    """Extract readable question text from HTML content"""
+    import re
+    from html import unescape
+
+    # Remove HTML tags
+    clean_text = re.sub(r"<[^>]+>", " ", html_content)
+    # Decode HTML entities
+    clean_text = unescape(clean_text)
+    # Normalize whitespace
+    clean_text = re.sub(r"\s+", " ", clean_text).strip()
+    return clean_text
+
+
 def analyze_apkg(apkg_path):
     """Comprehensive analysis of APKG file contents"""
     print(f"🔍 COMPREHENSIVE APKG ANALYSIS: {apkg_path}")
@@ -160,6 +174,20 @@ def analyze_apkg(apkg_path):
                     print(
                         f"🏗️  Structure: {div_count} divs, {img_count} imgs, {svg_count} svgs, {table_count} tables"
                     )
+
+                    # Extract question text for analysis
+                    question_text = extract_question_text(front_content)
+                    if len(question_text) > 200:
+                        question_preview = question_text[:200] + "..."
+                    else:
+                        question_preview = question_text
+
+                    print(f"❓ Question preview: {question_preview}")
+
+                    # Look for specific keywords
+                    if "cerebrospinal" in question_text.lower():
+                        print(f"🧠 CEREBROSPINAL FLUID QUESTION FOUND!")
+                        print(f"📝 Full question: {question_text}")
 
                     # Look for vital signs sections
                     hr_matches = re.findall(
