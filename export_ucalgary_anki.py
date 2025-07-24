@@ -582,7 +582,7 @@ def extract_patients_from_deck_page(driver, base_host, deck_id, bag_id):
     return patients if patients else ["Unknown Patient"]
 
 
-def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_url=None):
+def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_url=None, card_limit=None):
     opts = webdriver.ChromeOptions()
     opts.add_argument("--headless")
     opts.add_argument("--disable-gpu")
@@ -657,6 +657,11 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
 
             if not card_ids:
                 sys.exit("No card IDs found from submit buttons; check page structure.")
+
+            # Apply card limit for testing if specified
+            if card_limit and card_limit < len(card_ids):
+                print(f"🔧 Testing mode: Limiting to {card_limit} cards (out of {len(card_ids)} total)")
+                card_ids = card_ids[:card_limit]
 
             # Extract patient information from the deck page before processing cards
             patients_list = extract_patients_from_deck_page(
@@ -951,6 +956,11 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
             if not card_ids:
                 sys.exit("No card IDs found from submit buttons; check page structure.")
 
+            # Apply card limit for testing if specified
+            if card_limit and card_limit < len(card_ids):
+                print(f"🔧 Testing mode: Limiting to {card_limit} cards (out of {len(card_ids)} total)")
+                card_ids = card_ids[:card_limit]
+
             # Extract patient information from the deck page before processing cards
             patients_list = extract_patients_from_deck_page(
                 driver, base_host, deck_id, bag_id
@@ -1175,7 +1185,7 @@ def selenium_scrape_deck(deck_id, email, password, base_host, bag_id, details_ur
         driver.quit()
 
 
-def selenium_scrape_collection(collection_id, email, password, base_host):
+def selenium_scrape_collection(collection_id, email, password, base_host, card_limit=None):
     """
     Scrape all decks from a collection page and return combined cards with deck organization.
     """
@@ -1508,17 +1518,51 @@ table {
     border-collapse: collapse;
     width: 100%;
     margin: 10px 0;
+    background: white;
+    color: black;
 }
 
 table th, table td {
     border: 1px solid #ddd;
     padding: 8px;
     text-align: left;
+    color: black !important;
+    background: white;
 }
 
 table th {
-    background-color: #f2f2f2;
+    background-color: #f2f2f2 !important;
     font-weight: bold;
+    color: black !important;
+}
+
+/* Specific styling for tables in explanation/answer sections */
+#explanation table, #answer-section table {
+    background: white !important;
+    color: black !important;
+    border: 2px solid #333;
+    margin: 15px 0;
+}
+
+#explanation table th, #answer-section table th {
+    background-color: #e6e6e6 !important;
+    color: black !important;
+    font-weight: bold;
+    border: 1px solid #666;
+}
+
+#explanation table td, #answer-section table td {
+    background: white !important;
+    color: black !important;
+    border: 1px solid #666;
+}
+
+/* Style medical table headers */
+#explanation h4, #answer-section h4 {
+    color: #4CAF50;
+    font-weight: bold;
+    margin-top: 20px;
+    margin-bottom: 10px;
 }
 """,
         templates=[
@@ -2156,6 +2200,18 @@ def main():
     # Prompt URL every run
     base_url_override = input("Enter UCalgary collection or deck URL: ").strip()
 
+    # Ask for card limit for testing/troubleshooting
+    print("\n🔧 Testing Options:")
+    print("   - Press Enter to process ALL cards")
+    print("   - Enter a number (e.g., 5) to limit cards for testing")
+    card_limit_input = input("Number of cards to process (optional): ").strip()
+    card_limit = None
+    if card_limit_input and card_limit_input.isdigit():
+        card_limit = int(card_limit_input)
+        print(f"   ⚡ Will process only {card_limit} cards for testing")
+    else:
+        print(f"   📚 Will process ALL cards")
+
     # Detect if this is a collection or individual deck URL
     is_collection = False
     collection_id = None
@@ -2209,6 +2265,7 @@ def main():
                 email=email,
                 password=password,
                 base_host=host,
+                card_limit=card_limit,
             )
             # Use collection title for naming
             deck_name = collection_title
@@ -2223,6 +2280,7 @@ def main():
                 base_host=host,
                 bag_id=bag_id,
                 details_url=details_url,
+                card_limit=card_limit,
             )
             # Determine deck_id for output naming
             if details_url:
