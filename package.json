@@ -1,0 +1,56 @@
+{
+  "name": "ucalgary-anki-converter",
+  "version": "1.0.0",
+  "description": "A command-line tool that logs into the University of Calgary Cards site, scrapes question-and-answer cards, and generates a ready-to-import Anki .apkg deck using Selenium and Genanki.",
+  "main": "main.py",
+  "scripts": {
+    "start": "python main.py",
+    "debug": "python export_ucalgary_anki_debug.py",
+    "setup": "bash setup.sh",
+    "test": "python test_setup.py"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ammargrowme/anki_converter.git"
+  },
+  "keywords": [
+    "anki",
+    "flashcards",
+    "ucalgary",
+    "medical-education",
+    "study-tools",
+    "cards-converter",
+    "selenium",
+    "web-scraping",
+    "education"
+  ],
+  "author": "ammargrowme <ammar@growme.ca>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ammargrowme/anki_converter/issues"
+  },
+  "homepage": "https://github.com/ammargrowme/anki_converter#readme",
+  "engines": {
+    "python": ">=3.8"
+  },
+  "dependencies": {
+    "requests": ">=2.28.0",
+    "urllib3": ">=1.26.0",
+    "beautifulsoup4": ">=4.11.0",
+    "selenium": ">=4.15.0",
+    "webdriver-manager": ">=4.0.0",
+    "genanki": ">=0.13.0",
+    "Pillow": ">=10.0.0",
+    "tqdm": ">=4.65.0",
+    "python-dotenv": ">=1.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
+}

@@ -1213,77 +1213,32 @@ The generated cards use custom CSS and JavaScript for interactive features. Temp
 
 ## 📋 Development Log & Version History
 
-### Version 2.0 - January 2025 (Latest)
+For detailed version history and changes, see [CHANGELOG.md](CHANGELOG.md).
 
-**Major Refactoring & Enhanced Windows Support**
+### Current Version: 1.0.0 (July 2025)
 
-**🔄 Architecture Changes:**
+**Production-Ready UCalgary Anki Converter**
 
-- Split monolithic script into modular components for maintainability
-- Created dual-version system: modular (`main.py`) + debug (`export_ucalgary_anki_debug.py`)
-- Implemented comprehensive cross-platform setup script (`setup.sh`)
+This represents the first stable release of the UCalgary Anki Converter with comprehensive features:
 
-**🪟 Windows Compatibility Fixes:**
+**🔄 Architecture:**
+- Modular Python architecture with separate components for maintainability
+- Dual execution modes: modular (`main.py`) and debug (`export_ucalgary_anki_debug.py`)
+- Cross-platform setup automation (`setup.sh`)
 
-- **Issue:** Setup script (`setup.sh`) failed in Windows Command Prompt and PowerShell
-- **Solution:** Updated documentation to require Git Bash for Windows users
-- **Improvement:** Added Windows-specific activation scripts (`.bat` and `.ps1`)
-- **Testing:** Verified fresh installation from scratch on Windows systems
-
-**📚 Documentation Overhaul:**
-
-- Rewrote README with clear OS-specific instructions
-- Added comprehensive troubleshooting section with Windows-specific solutions
-- Created beginner-friendly quick start guides
-- Added terminal requirements and common mistake warnings
-
-**🔧 Setup & Installation Improvements:**
-
-- **Auto-Detection:** Setup script automatically detects OS and installs appropriate dependencies
-- **Dependency Management:** Automatic installation of missing components (Homebrew, Git, Chrome)
-- **GUI Support:** Automatic tkinter installation and fallback handling
-- **Verification:** Added `test_setup.py` for comprehensive system verification
-
-**✨ New Features Added:**
-
+**✨ Key Features:**
 - **Collection Support:** Convert entire UCalgary Cards collections with multiple decks
-- **Hierarchical Organization:** Smart deck structure creation (Collection → Deck → Patient)
-- **Curriculum Detection:** Special handling for RIME-style collections
-- **Enhanced Content Extraction:** Better table, image, and formatted content preservation
-- **GUI File Dialogs:** Modern save dialogs with command-line fallback
-- **Progress Tracking:** Real-time progress bars for collection processing
+- **GUI Integration:** Modern file dialogs and user interface elements
+- **Content Preservation:** Tables, images, formatted text, and interactive elements
+- **Cross-Platform:** Windows, macOS, and Linux support with automated setup
+- **APKG Analysis:** Tools for analyzing existing Anki decks
+- **Hierarchical Organization:** Smart deck structure (Collection → Deck → Patient)
 
-**🐛 Bug Fixes:**
-
-- Fixed virtual environment activation on Windows
-- Resolved ChromeDriver compatibility issues
-- Fixed image processing and sizing problems
-- Corrected path handling across different operating systems
-
-**📊 Testing & Validation:**
-
-- Comprehensive testing on Windows 11, macOS, and Ubuntu Linux
-- Fresh installation testing from GitHub clone
-- End-to-end workflow validation with real UCalgary Cards data
-- Cross-platform compatibility verification
-
-### Version 1.0 - Original Implementation
-
-**Initial Features:**
-
-- Basic deck scraping from UCalgary Cards
-- Single-file Python script
-- Manual dependency installation
-- Limited cross-platform support
-- Command-line only interface
-
-**Known Limitations (Resolved in v2.0):**
-
-- Windows setup complexity
-- Manual ChromeDriver management
-- Limited error handling
-- No collection support
-- Basic content extraction
+**🛠️ Development Highlights:**
+- Comprehensive testing across all supported platforms
+- Extensive documentation and troubleshooting guides
+- Automated dependency management and installation
+- Enhanced error handling and user feedback
 
 ---
 
