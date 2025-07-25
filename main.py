@@ -166,7 +166,8 @@ def main():
 
         # Re-prompt for credentials and retry
         email, password = prompt_credentials(host)
-        save_credentials(email, password)
+        # Pass the host to ensure save_credentials receives all required args
+        save_credentials(email, password, host)
 
         # Show progress dialog again for retry
         progress_dialog = show_script_running_dialog()
