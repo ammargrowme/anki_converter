@@ -1236,6 +1236,8 @@ For detailed version history, changes, and release notes, see [CHANGELOG.md](CHA
 - ✅ File structure validation
 - ✅ Import capability testing
 
+**Unit Tests (`pytest`):** Run `pytest` to execute all automated unit tests.
+
 **Manual Testing Scenarios:**
 
 - ✅ Fresh installation on clean systems
