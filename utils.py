@@ -745,12 +745,11 @@ def prompt_url_and_credentials_with_url():
             if "URL/Network error" in error_message:
                 print(f"❌ {error_message}")
                 if not saved_credentials:
-                    # First failure due to URL issue - save credentials for next attempt
+                    # First failure due to URL issue - keep credentials for next attempt but don't save yet
                     saved_credentials = (email, password, should_save)
-                    # Actually save credentials to file if user wanted them saved
-                    if should_save:
-                        save_credentials(email, password, base_host)
-                    print("💾 Credentials appear valid, saved for retry")
+                    print(
+                        "💾 Credentials will be validated with working URL before saving"
+                    )
                 if attempt < 2:
                     print(f"Please try a different URL ({attempt + 1}/3 attempts)")
             else:

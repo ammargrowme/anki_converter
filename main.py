@@ -35,7 +35,6 @@ from utils import (
     validate_saved_credentials_for_host,
     show_script_running_dialog,
     close_script_running_dialog,
-    save_credentials,
 )
 from deck_scraping import selenium_scrape_deck, selenium_scrape_collection
 from anki_export import export_hierarchical_apkg, export_apkg
@@ -167,8 +166,7 @@ def main():
 
         # Re-prompt for credentials and retry
         email, password = prompt_credentials(host)
-        # Pass the host to ensure save_credentials receives all required args
-        save_credentials(email, password, host)
+        # Note: credentials will be saved only after successful validation in prompt_credentials
 
         # Show progress dialog again for retry
         progress_dialog = show_script_running_dialog()
