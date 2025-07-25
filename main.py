@@ -35,6 +35,7 @@ from utils import (
     validate_saved_credentials_for_host,
     show_script_running_dialog,
     close_script_running_dialog,
+    save_credentials,
 )
 from deck_scraping import selenium_scrape_deck, selenium_scrape_collection
 from anki_export import export_hierarchical_apkg, export_apkg
@@ -321,13 +322,6 @@ def get_credentials(host):
     print("🔐 Credentials required")
     email, password = prompt_credentials(host)
     return email, password
-
-
-def save_credentials(email, password, base_host):
-    """Save credentials to config file"""
-    with open(CONFIG_PATH, "w") as cf:
-        json.dump({"email": email, "password": password, "base_host": base_host}, cf)
-    print(f"💾 Credentials saved")
 
 
 if __name__ == "__main__":
