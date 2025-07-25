@@ -262,7 +262,15 @@ def main():
 
 
 def parse_input_url(base_url_override):
-    """Parse the input URL to determine type and extract parameters"""
+    """Parse the input URL to determine type and extract parameters.
+
+    Returns a 5-tuple of:
+        host -- base host portion of the URL
+        is_collection -- ``True`` if the URL points to a collection
+        collection_id -- collection identifier if applicable
+        details_url -- full deck details URL when scraping a single deck
+        bag_id -- bag ID query parameter or default value
+    """
     host = BASE
     is_collection = False
     collection_id = None
