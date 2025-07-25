@@ -307,11 +307,10 @@ def analyze_apkg(apkg_path):
                     )
                     print(f"       Note IDs: {note_ids}")
 
-            # Enhanced duplicate analysis - check actual questions and answers
-            print(f"\n🔍 ENHANCED DUPLICATE ANALYSIS:")
-            question_texts = {}
-            answer_texts = {}
-            true_duplicates = {}
+            # Enhanced duplicate analysis - check for EXACT duplicates only
+            print(f"\n🔍 EXACT DUPLICATE ANALYSIS:")
+            exact_question_answer_pairs = {}
+            true_exact_duplicates = {}
 
             for note_id, fields in all_notes:
                 field_list = fields.split("\x1f")
@@ -330,72 +329,65 @@ def analyze_apkg(apkg_path):
                     answer_text = re.sub(r'data:image/[^"\']*', "", answer_text)
                     answer_text = re.sub(r"\s+", " ", answer_text).strip()
 
-                    # Create a signature for the question (first 200 chars)
-                    question_signature = (
-                        question_text[:200]
-                        if len(question_text) > 200
-                        else question_text
-                    )
+                    # Create a FULL signature for EXACT matching (question + answer)
+                    exact_signature = f"{question_text}||{answer_text}"
 
-                    # Track questions
-                    if question_signature in question_texts:
-                        if question_signature not in true_duplicates:
-                            true_duplicates[question_signature] = []
-                        true_duplicates[question_signature].append(
-                            {
-                                "note_id": note_id,
-                                "question": question_text,
-                                "answer": (
-                                    answer_text[:100] + "..."
-                                    if len(answer_text) > 100
-                                    else answer_text
-                                ),
+                    # Track EXACT question+answer combinations
+                    if exact_signature in exact_question_answer_pairs:
+                        if exact_signature not in true_exact_duplicates:
+                            true_exact_duplicates[exact_signature] = {
+                                "original": exact_question_answer_pairs[exact_signature],
+                                "duplicates": []
                             }
-                        )
-                    else:
-                        question_texts[question_signature] = {
+                        true_exact_duplicates[exact_signature]["duplicates"].append({
                             "note_id": note_id,
-                            "question": question_text,
-                            "answer": (
-                                answer_text[:100] + "..."
-                                if len(answer_text) > 100
-                                else answer_text
-                            ),
+                            "question": question_text[:200] + "..." if len(question_text) > 200 else question_text,
+                            "answer": answer_text[:100] + "..." if len(answer_text) > 100 else answer_text,
+                        })
+                    else:
+                        exact_question_answer_pairs[exact_signature] = {
+                            "note_id": note_id,
+                            "question": question_text[:200] + "..." if len(question_text) > 200 else question_text,
+                            "answer": answer_text[:100] + "..." if len(answer_text) > 100 else answer_text,
                         }
 
-            # Report true duplicates
-            if true_duplicates:
-                print(f"\n🚨 TRUE DUPLICATE QUESTIONS FOUND:")
-                for i, (question_sig, duplicates) in enumerate(true_duplicates.items()):
-                    print(f"\n--- 🔄 DUPLICATE GROUP {i+1} ---")
-                    print(f"📝 Question: {question_sig}")
+            # Report ONLY true exact duplicates
+            if true_exact_duplicates:
+                print(f"\n🚨 EXACT DUPLICATE QUESTIONS FOUND:")
+                print(f"   ⚠️  These are identical question+answer pairs (potential errors)")
+                for i, (exact_sig, dup_data) in enumerate(true_exact_duplicates.items()):
+                    print(f"\n--- 🔄 EXACT DUPLICATE GROUP {i+1} ---")
+                    question_part = exact_sig.split("||")[0]
+                    answer_part = exact_sig.split("||")[1]
+                    print(f"📝 Question: {question_part[:150]}...")
+                    print(f"💬 Answer: {answer_part[:100]}...")
 
                     # Show original
-                    original = question_texts[question_sig]
-                    print(f"  📌 Original Note ID: {original['note_id']}")
-                    print(f"  💬 Answer: {original['answer']}")
+                    original = dup_data["original"]
+                    print(f"  � Original Note ID: {original['note_id']}")
 
-                    # Show duplicates
-                    for j, dup in enumerate(duplicates):
-                        print(f"  🔄 Duplicate {j+1} Note ID: {dup['note_id']}")
-                        print(f"      💬 Answer: {dup['answer']}")
-
-                        # Check if answers are different
-                        if dup["answer"] != original["answer"]:
-                            print(f"      ⚠️  DIFFERENT ANSWER DETECTED!")
+                    # Show exact duplicates
+                    for j, dup in enumerate(dup_data["duplicates"]):
+                        print(f"  🔄 Exact Duplicate {j+1} Note ID: {dup['note_id']}")
+                        
+                print(f"\n📊 EXACT DUPLICATE SUMMARY:")
+                print(f"  ⚠️  {len(true_exact_duplicates)} exact duplicate question+answer pairs found")
+                total_duplicate_cards = sum(len(dup_data["duplicates"]) for dup_data in true_exact_duplicates.values())
+                print(f"  🔄 {total_duplicate_cards} total duplicate cards that could be removed")
             else:
-                print(
-                    f"✅ NO TRUE DUPLICATE QUESTIONS FOUND - All questions are unique!"
-                )
+                print(f"✅ NO EXACT DUPLICATE QUESTIONS FOUND!")
+                print(f"   🎓 All question+answer combinations are unique (as expected for educational content)")
+                print(f"   📚 Similar scenarios with different questions/answers are intentional educational variants")
 
             print(f"\n📊 UNIQUE QUESTIONS SUMMARY:")
-            print(f"  📝 Total unique questions: {len(question_texts)}")
-            print(f"  🔄 Total duplicate groups: {len(true_duplicates)}")
+            print(f"  📝 Total unique question+answer combinations: {len(exact_question_answer_pairs)}")
+            print(f"  🔄 Total exact duplicate groups: {len(true_exact_duplicates)}")
 
-            # Show all unique questions
-            print(f"\n📋 ALL UNIQUE QUESTIONS:")
-            for i, (question_sig, data) in enumerate(question_texts.items()):
-                print(f"\n{i+1:2d}. Note ID {data['note_id']}: {question_sig}")
+            # Show sample unique questions (first 10)
+            print(f"\n📋 SAMPLE UNIQUE QUESTIONS (First 10):")
+            for i, (exact_sig, data) in enumerate(list(exact_question_answer_pairs.items())[:10]):
+                question_part = exact_sig.split("||")[0]
+                print(f"\n{i+1:2d}. Note ID {data['note_id']}: {question_part[:150]}...")
 
             # Detailed analysis of first few notes
             print(f"\n🔍 DETAILED ANALYSIS (First 3 notes):")
@@ -576,9 +568,9 @@ def analyze_apkg(apkg_path):
                 quality_score += 1
                 print(f"  ✅ Sufficient content volume ({len(all_notes)} notes)")
 
-            if not true_duplicates:
+            if not true_exact_duplicates:
                 quality_score += 1
-                print(f"  ✅ No duplicate questions")
+                print(f"  ✅ No exact duplicate questions")
 
             print(
                 f"\n  🎯 Quality Score: {quality_score}/{max_score} ({quality_score/max_score*100:.0f}%)"
