@@ -1,6 +1,6 @@
 {
   "name": "anki-converter",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A command-line tool that logs into the University of Calgary Cards site, scrapes question-and-answer cards, and generates a ready-to-import Anki deck using Selenium and Genanki",
   "main": "main.py",
   "scripts": {

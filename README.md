@@ -696,6 +696,9 @@ chmod +x setup.sh
 
 - **Solution:** Install Google Chrome from https://www.google.com/chrome/
 - The script handles ChromeDriver automatically
+- If you see `SessionNotCreatedException` complaining about a Chrome
+  version mismatch, run `./setup.sh` again to reinstall the matching
+  ChromeDriver
 
 **❌ "Login failed"**
 
@@ -1119,8 +1122,12 @@ A: Yes, for personal educational use with courses you're enrolled in. Always com
 **Q: Can I share the generated Anki decks?**  
 A: Only if you have permission to share the content. Most course materials are copyrighted and should only be used for personal study.
 
-**Q: What if I'm not a UCalgary student?**  
+**Q: What if I'm not a UCalgary student?**
 A: This tool is specifically designed for UCalgary Cards. It won't work with other institutions' systems.
+
+**Q: How do I run the automated tests?**
+A: After installing dependencies, simply run `pytest` from the project root. All
+  tests should pass without errors.
 
 ---
 
@@ -1189,6 +1196,15 @@ anki_converter/
 - Set `UCALGARY_ANKI_HEADLESS=false` to run Chrome visibly for debugging
 - Set `UCALGARY_ANKI_TIMEOUT=30` to adjust page load timeout (default: 10s)
 - Set `UCALGARY_ANKI_DEBUG=true` for verbose logging in modular version
+- You can store these variables in a `.env` file:
+
+```bash
+UCALGARY_ANKI_HEADLESS=false
+UCALGARY_ANKI_TIMEOUT=30
+UCALGARY_ANKI_DEBUG=true
+```
+
+The script automatically loads variables from `.env` if present.
 
 **Custom Chrome Options:**
 Edit `deck_scraping.py` or debug file to modify Chrome behavior:
@@ -1213,11 +1229,12 @@ The generated cards use custom CSS and JavaScript for interactive features. Temp
 
 ## 📋 Version History
 
-**Current Version: 1.0.0** (July 24, 2025)
+**Current Version: 1.0.1** (July 25, 2025)
 
 For detailed version history, changes, and release notes, see [CHANGELOG.md](CHANGELOG.md).
 
 ### Recent Highlights:
+- **v1.0.1**: Added unit tests and improved documentation
 - **v1.0.0**: Major refactoring with enhanced Windows support, modular architecture, collection support, and comprehensive cross-platform compatibility
 - **v0.9.0**: Cross-platform testing and validation improvements
 - **v0.1.0**: Initial implementation with basic deck scraping functionality
