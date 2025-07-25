@@ -1213,7 +1213,7 @@ The generated cards use custom CSS and JavaScript for interactive features. Temp
 
 ## 📋 Development Log & Version History
 
-### Version 2.0 - January 2025 (Latest)
+### Version 2.0 - July 24th, 2025 (Latest)
 
 **Major Refactoring & Enhanced Windows Support**
 
@@ -1372,7 +1372,7 @@ This tool is for educational purposes only. Users are responsible for complying 
 
 ---
 
-_Last updated: January 2025_  
+_Last updated: July 24th, 2025_  
 _Repository: [https://github.com/ammargrowme/anki_converter](https://github.com/ammargrowme/anki_converter)_
 
 ## 🔐 Security & Privacy
