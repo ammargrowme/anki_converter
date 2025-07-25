@@ -20,14 +20,30 @@ import sys
 import json
 from urllib.parse import urlparse, parse_qs
 
-from utils import prompt_credentials, prompt_save_location, show_completion_message, CONFIG_PATH, BASE, BAG_ID_DEFAULT
+from utils import (
+    prompt_credentials,
+    prompt_save_location,
+    show_completion_message,
+    CONFIG_PATH,
+    BASE,
+    BAG_ID_DEFAULT,
+    prompt_url_and_credentials,
+    prompt_url_and_credentials_with_url,
+    prompt_url_only,
+    prompt_url_with_validation,
+    load_credentials,
+    validate_saved_credentials_for_host,
+    show_script_running_dialog,
+    close_script_running_dialog,
+)
 from deck_scraping import selenium_scrape_deck, selenium_scrape_collection
 from anki_export import export_hierarchical_apkg, export_apkg
 
 
 def show_help():
     """Display help information"""
-    print("""
+    print(
+        """
 📖 USAGE:
   python main.py [URL]
   python main.py [--help|-h|help]
@@ -44,7 +60,8 @@ def show_help():
   • Automatically handles authentication and image processing
 
 💡 TIP: The script will prompt for credentials and save location if not provided.
-    """)
+    """
+    )
 
 
 def main():
@@ -52,7 +69,7 @@ def main():
     print("=" * 50)
 
     # Check for help flag
-    if len(sys.argv) > 1 and sys.argv[1] in ['-h', '--help', 'help']:
+    if len(sys.argv) > 1 and sys.argv[1] in ["-h", "--help", "help"]:
         show_help()
         return
 
@@ -60,18 +77,46 @@ def main():
     if len(sys.argv) > 1:
         base_url_override = sys.argv[1].strip()
         print(f"Using URL from command line: {base_url_override}")
+        # Parse URL to determine collection vs deck and extract parameters
+        host, is_collection, collection_id, details_url, bag_id = parse_input_url(
+            base_url_override
+        )
+        # Load or prompt for credentials
+        email, password = get_credentials(host)
     else:
-        # Prompt URL if no command line argument
-        base_url_override = input("Enter UCalgary collection or deck URL: ").strip()
+        # Check if we have saved credentials first
+        saved_creds = load_credentials()
+        if saved_creds.get("email") and saved_creds.get("password"):
+            # We have saved credentials, prompt for URL with validation
+            print("Using saved credentials. Please enter URL...")
+            full_url = prompt_url_with_validation(
+                saved_creds["email"], saved_creds["password"]
+            )
+
+            # Parse the URL from the dialog
+            host, is_collection, collection_id, details_url, bag_id = parse_input_url(
+                full_url
+            )
+
+            # Use saved credentials
+            email = saved_creds["email"]
+            password = saved_creds["password"]
+            print(f"📧 Using saved credentials for {email}")
+        else:
+            # No saved credentials, use unified dialog for both URL and credentials
+            print("No saved credentials found. Opening login dialog...")
+            email, password, full_url = prompt_url_and_credentials_with_url()
+
+            # Parse the URL from the dialog
+            host, is_collection, collection_id, details_url, bag_id = parse_input_url(
+                full_url
+            )
 
     # No card limit - process all cards
     card_limit = None
 
-    # Parse URL to determine collection vs deck and extract parameters
-    host, is_collection, collection_id, details_url, bag_id = parse_input_url(base_url_override)
-
-    # Load or prompt for credentials
-    email, password = get_credentials(host)
+    # Show progress dialog to inform user that script is running
+    progress_dialog = show_script_running_dialog()
 
     # Scrape cards based on URL type
     try:
@@ -99,7 +144,7 @@ def main():
                 details_url=details_url,
                 card_limit=card_limit,
             )
-            
+
             # Determine deck_id for output naming
             if details_url:
                 parsed_details = urlparse(details_url)
@@ -109,17 +154,23 @@ def main():
                     deck_id = "unknown"
             else:
                 deck_id = bag_id or "unknown"
-            
+
             deck_name = f"Deck_{deck_id}"
             decks_info = {}
             is_single_deck = True
 
     except RuntimeError as e:
         print(f"Login error during scrape: {e}")
+        # Close the progress dialog
+        close_script_running_dialog(progress_dialog)
+
         # Re-prompt for credentials and retry
         email, password = prompt_credentials(host)
         save_credentials(email, password)
-        
+
+        # Show progress dialog again for retry
+        progress_dialog = show_script_running_dialog()
+
         # Retry scraping with new credentials
         if is_collection:
             cards, decks_info, collection_title = selenium_scrape_collection(
@@ -142,7 +193,7 @@ def main():
                 details_url=details_url,
                 card_limit=card_limit,
             )
-            
+
             if details_url:
                 parsed_details = urlparse(details_url)
                 try:
@@ -151,16 +202,21 @@ def main():
                     deck_id = "unknown"
             else:
                 deck_id = bag_id or "unknown"
-            
+
             deck_name = f"Deck_{deck_id}"
             decks_info = {}
             is_single_deck = True
 
     if not cards:
         print("❌ No cards were extracted. Please check the URL and try again.")
+        # Close progress dialog before exiting
+        close_script_running_dialog(progress_dialog)
         sys.exit(1)
 
     print(f"\n✅ Successfully extracted {len(cards)} cards")
+
+    # Close the progress dialog before showing file save dialog
+    close_script_running_dialog(progress_dialog)
 
     # Prompt for save location
     default_filename = f"{deck_name}.apkg"
@@ -168,13 +224,13 @@ def main():
 
     # Export the deck using hierarchical structure
     print(f"\n📦 Exporting to Anki format...")
-    
+
     # Use hierarchical export for collections OR when we have patient data
     has_patients = any(
         card.get("patient_info") and card.get("patient_info") != "Unknown Patient"
         for card in cards
     )
-    
+
     # Check if we have sequential cards
     has_sequential = any(card.get("is_sequential") for card in cards)
 
@@ -185,25 +241,23 @@ def main():
             collection_name=deck_name,
             decks_info=decks_info,
             path=output_path,
-            is_single_deck=is_single_deck
+            is_single_deck=is_single_deck,
         )
     else:
         # Use simple export for basic single-deck scenarios
-        export_apkg(
-            data=cards,
-            deck_name=deck_name,
-            path=output_path
-        )
+        export_apkg(data=cards, deck_name=deck_name, path=output_path)
 
     # Show completion message
     if is_collection:
         deck_count = len(set(card.get("deck_id_source", "unknown") for card in cards))
         print(f"📊 Collection Summary: {deck_count} decks, {len(cards)} total cards")
         show_completion_message(output_path, len(cards))
-        print(f"📋 Decks included: {', '.join(set(card.get('deck_title', 'Unknown') for card in cards))}")
+        print(
+            f"📋 Decks included: {', '.join(set(card.get('deck_title', 'Unknown') for card in cards))}"
+        )
     else:
         show_completion_message(output_path, len(cards))
-    
+
     print(f"\n🎉 Process complete! Your Anki deck is ready to import.")
 
 
@@ -247,24 +301,23 @@ def get_credentials(host):
     if os.path.exists(CONFIG_PATH):
         with open(CONFIG_PATH) as cf:
             cfg = json.load(cf)
-        email = cfg.get("username")
+        email = cfg.get("email")  # Fixed: was "username"
         password = cfg.get("password")
-        
+
         if email and password:
             print(f"📧 Using saved credentials for {email}")
             return email, password
-    
+
     # Prompt for credentials if not found or incomplete
     print("🔐 Credentials required")
     email, password = prompt_credentials(host)
-    save_credentials(email, password)
     return email, password
 
 
-def save_credentials(email, password):
+def save_credentials(email, password, base_host):
     """Save credentials to config file"""
     with open(CONFIG_PATH, "w") as cf:
-        json.dump({"username": email, "password": password}, cf)
+        json.dump({"email": email, "password": password, "base_host": base_host}, cf)
     print(f"💾 Credentials saved")
 
 
@@ -277,5 +330,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Unexpected error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

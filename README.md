@@ -10,19 +10,23 @@ A command-line tool that logs into the University of Calgary Cards site, scrapes
 
 **Choose your version:**
 
-### Option A: **Simplified Modular Version** *(Recommended for most users)*
+### Option A: **Simplified Modular Version** _(Recommended for most users)_
+
 ```bash
 python main.py
 ```
+
 - Clean, modular codebase
 - Easy to maintain and understand
 - All features included
 - Faster startup
 
-### Option B: **Debug Version** *(For development/troubleshooting)*
+### Option B: **Debug Version** _(For development/troubleshooting)_
+
 ```bash
 python export_ucalgary_anki_debug.py
 ```
+
 - Single file with extensive logging
 - Helpful for debugging issues
 - All features included
@@ -36,14 +40,14 @@ This comprehensive guide covers everything from basic setup to advanced troubles
 
 ## 🔄 Version Comparison
 
-| Feature | Modular Version (`main.py`) | Debug Version (`export_ucalgary_anki_debug.py`) |
-|---------|----------------------------|------------------------------------------------|
-| **Recommended for** | Most users | Troubleshooting & development |
-| **Code organization** | Multiple files, clean | Single file |
-| **Startup speed** | Faster | Slightly slower |
-| **Debug output** | Minimal, clean | Extensive logging |
-| **Maintenance** | Easy to update | Harder to modify |
-| **Results** | ✅ Identical | ✅ Identical |
+| Feature               | Modular Version (`main.py`) | Debug Version (`export_ucalgary_anki_debug.py`) |
+| --------------------- | --------------------------- | ----------------------------------------------- |
+| **Recommended for**   | Most users                  | Troubleshooting & development                   |
+| **Code organization** | Multiple files, clean       | Single file                                     |
+| **Startup speed**     | Faster                      | Slightly slower                                 |
+| **Debug output**      | Minimal, clean              | Extensive logging                               |
+| **Maintenance**       | Easy to update              | Harder to modify                                |
+| **Results**           | ✅ Identical                | ✅ Identical                                    |
 
 **Features:**
 
@@ -207,7 +211,8 @@ Scraping cards: 100%|████████████| 6/6 [00:15<00:00, 2.5
    bash setup.sh
    ```
 
-   **Windows Users:** 
+   **Windows Users:**
+
    - ✅ Use Git Bash (comes with Git installation)
    - ❌ Don't use Command Prompt (`cmd`) - it won't work
    - ❌ Don't use PowerShell - it won't work with bash scripts
@@ -231,24 +236,27 @@ Scraping cards: 100%|████████████| 6/6 [00:15<00:00, 2.5
    ```
 
    **Windows Alternative Options:**
+
    - **Git Bash:** `source .venv/bin/activate` (recommended, same terminal)
    - **Command Prompt:** Double-click `activate.bat` file
    - **PowerShell:** Right-click `activate.ps1` → "Run with PowerShell"
 
-   **⚠️ Important:** 
+   **⚠️ Important:**
+
    - For Git Bash/Mac/Linux: Use `source` or `.` - do NOT run `./activate.sh`
    - You should see `(.venv)` prefix in your terminal after activation
 
 7. **Run the converter:**
+
    ```bash
    # Test your setup first (optional):
    python test_setup.py
-   
+
    # Choose your preferred version:
-   
+
    # Option A: Modular version (recommended)
    python main.py
-   
+
    # Option B: Debug version (for troubleshooting)
    python export_ucalgary_anki_debug.py
    ```
@@ -264,11 +272,13 @@ Scraping cards: 100%|████████████| 6/6 [00:15<00:00, 2.5
 **Only use this if the automatic setup doesn't work for your system.**
 
 1. **Install prerequisites manually:**
+
    - Python 3.8+ from: https://www.python.org/downloads/
-   - Git from: https://git-scm.com/downloads  
+   - Git from: https://git-scm.com/downloads
    - Google Chrome from: https://www.google.com/chrome/
 
 2. **Clone and setup:**
+
    ```bash
    git clone https://github.com/ammargrowme/anki_converter.git
    cd anki_converter
@@ -297,6 +307,14 @@ Scraping cards: 100%|████████████| 6/6 [00:15<00:00, 2.5
 - 💾 **File Save Dialog** - No more typing file paths! Click and save like any app
 - 🎉 **Success Popup** - Clear confirmation when your deck is ready
 - 🔄 **Automatic Fallback** - Uses command line if GUI isn't available
+
+**🚀 Enhanced User Experience:**
+
+- 🔐 **Smart Login Flow** - First-time users see unified login dialog, returning users only enter URLs
+- 💾 **Credential Memory** - Valid credentials are preserved even if URL validation fails
+- ✅ **Improved URL Validation** - Works correctly with all valid UCalgary deck and collection URLs
+- 📱 **Larger Processing Dialog** - Better visibility during card processing
+- 🎯 **Clear URL Guidance** - Helpful examples and labels for valid URL formats
 
 ---
 
@@ -409,6 +427,7 @@ python export_ucalgary_anki_debug.py
 ### Advanced Usage Options
 
 **Command Line Arguments:**
+
 ```bash
 # Run with visible Chrome for debugging
 UCALGARY_ANKI_HEADLESS=false python main.py
@@ -421,6 +440,7 @@ UCALGARY_ANKI_DEBUG=true python main.py
 ```
 
 **Batch Processing:**
+
 ```bash
 # Process multiple URLs (create a script)
 #!/bin/bash
@@ -441,16 +461,19 @@ done
 **The script will:**
 
 1. **Initial Setup** (first run only)
+
    - Prompt for UCalgary email and password
    - Validate credentials by logging into Cards site
    - Save credentials securely to `~/.uc_anki_config.json`
 
 2. **URL Input & Detection**
+
    - Ask for a UCalgary Cards deck or collection URL
    - **Auto-detect URL type** (individual deck vs. collection)
    - Parse deck/collection IDs automatically
 
 3. **Web Scraping Process**
+
    - Launch Chrome browser (headless by default)
    - Log into Cards site using saved credentials
    - **For collections**: Find all decks and scrape each one with progress tracking
@@ -458,12 +481,14 @@ done
    - Handle pagination and multi-patient decks automatically
 
 4. **Content Processing**
+
    - Extract question text, choices, and explanations
    - Download and optimize images
    - Preserve table formatting and HTML structure
    - Generate interactive card elements
 
 5. **Anki Generation**
+
    - Create Anki deck with proper formatting
    - Add interactive JavaScript for multiple choice
    - **Open "Save As" dialog** for file location selection
@@ -476,6 +501,7 @@ done
 ### URL Format Support
 
 **Individual Deck URLs:**
+
 ```
 # Details page (recommended)
 https://cards.ucalgary.ca/details/{deck_id}?bag_id={bag_id}
@@ -489,6 +515,7 @@ https://cards.ucalgary.ca/printdeck/1261?bag_id=151
 ```
 
 **Collection URLs:**
+
 ```
 # Collection page
 https://cards.ucalgary.ca/collection/{collection_id}
@@ -498,6 +525,7 @@ https://cards.ucalgary.ca/collection/150
 ```
 
 **How to find your URL:**
+
 1. Log into [cards.ucalgary.ca](https://cards.ucalgary.ca)
 2. Navigate to your desired deck or collection
 3. Copy the URL from your browser's address bar
@@ -506,6 +534,7 @@ https://cards.ucalgary.ca/collection/150
 ### Import to Anki
 
 **After conversion:**
+
 1. Open Anki desktop application
 2. Go to **File → Import**
 3. Select your generated `.apkg` file
@@ -513,6 +542,7 @@ https://cards.ucalgary.ca/collection/150
 5. Your deck will appear in Anki's deck list
 
 **Import Options:**
+
 - **Update existing cards**: If you re-import, choose whether to update
 - **Deck naming**: Cards will be organized with proper deck names
 - **Tags**: Cards are automatically tagged by source deck
@@ -520,6 +550,7 @@ https://cards.ucalgary.ca/collection/150
 ### Interactive Features in Anki
 
 **Generated cards support:**
+
 - ✅ **Multiple choice selection**: Click to select answers
 - ✅ **Real-time scoring**: See results as you answer
 - ✅ **Color coding**: Green for correct, red for incorrect
@@ -528,6 +559,7 @@ https://cards.ucalgary.ca/collection/150
 - ✅ **Mobile compatibility**: Works in AnkiMobile and AnkiDroid
 
 **Card Types Created:**
+
 - **Multiple Choice**: Interactive selection with scoring
 - **Free Response**: Open-ended questions with model answers
 - **Case-Based**: Multi-part questions with patient scenarios
@@ -587,12 +619,14 @@ https://cards.ucalgary.ca/collection/150
 ### ⚠️ IMPORTANT: Terminal Requirements by OS
 
 **Windows Users:**
+
 - ✅ **Use Git Bash** for running `setup.sh` (comes with Git for Windows)
 - ❌ **Don't use Command Prompt** (`cmd`) - bash scripts won't work
 - ❌ **Don't use PowerShell** - different syntax and won't run bash scripts
 - 💡 **After setup:** You can use .bat/.ps1 files for activation if you prefer
 
 **Mac/Linux Users:**
+
 - ✅ **Use Terminal** - built-in bash support
 - ✅ **setup.sh works directly** - no special requirements
 
@@ -616,7 +650,7 @@ https://cards.ucalgary.ca/collection/150
 
 ```bash
 # Problem: You're using Command Prompt or PowerShell instead of Git Bash
-# Solution: 
+# Solution:
 # 1. Install Git for Windows: https://git-scm.com/download/win
 # 2. Open Git Bash (NOT cmd or PowerShell)
 # 3. Run the setup script in Git Bash
@@ -921,6 +955,7 @@ google-chrome --version  # Linux
    ```
 
    **✨ The setup script will automatically:**
+
    - Detect you're on Windows
    - Create Windows-specific activation scripts (.bat and .ps1)
    - Install all Python dependencies
@@ -934,6 +969,7 @@ google-chrome --version  # Linux
    ```
 
    **Alternative activation methods:**
+
    - Double-click `activate.bat` (opens Command Prompt)
    - Right-click `activate.ps1` → "Run with PowerShell"
 
@@ -945,6 +981,7 @@ google-chrome --version  # Linux
    ```
 
 **🚨 Common Windows Mistakes to Avoid:**
+
 - ❌ Don't use Command Prompt (`cmd`) for setup - `setup.sh` won't work
 - ❌ Don't use PowerShell for setup - bash scripts don't work there
 - ✅ Use Git Bash for setup and running the scripts
@@ -1040,6 +1077,7 @@ A: You're using Command Prompt or PowerShell instead of Git Bash. Install Git fo
 
 **Q: The script says "Login failed" but my credentials are correct. Why?**  
 A: Try these solutions:
+
 1. Verify you can log into cards.ucalgary.ca manually
 2. Check if you have 2-factor authentication enabled
 3. Delete `~/.uc_anki_config.json` and re-enter credentials
@@ -1047,6 +1085,7 @@ A: Try these solutions:
 
 **Q: No file dialog appears when saving. What should I do?**  
 A: This means GUI support (tkinter) isn't available. The script will fall back to command-line input. To enable GUI dialogs:
+
 - **Linux:** `sudo apt install python3-tk`
 - **macOS:** `brew install python-tk`
 - **Windows:** Reinstall Python with tkinter support
@@ -1058,6 +1097,7 @@ A: Run `chmod +x setup.sh` to make the script executable, or try the automatic s
 
 **Q: What types of content are preserved in the conversion?**  
 A: The script preserves:
+
 - Question text and multiple choice options
 - Images and diagrams
 - Tables and formatted data
@@ -1089,6 +1129,7 @@ A: This tool is specifically designed for UCalgary Cards. It won't work with oth
 ### Architecture Overview
 
 **Modular Version (`main.py`):**
+
 - **Entry Point:** `main.py` - Coordinates the entire process
 - **Authentication:** `auth.py` - Handles UCalgary login and credential management
 - **Web Scraping:** `deck_scraping.py` - Selenium-based card extraction
@@ -1099,6 +1140,7 @@ A: This tool is specifically designed for UCalgary Cards. It won't work with oth
 - **Utilities:** `utils.py` - Shared functions and configurations
 
 **Debug Version (`export_ucalgary_anki_debug.py`):**
+
 - Single-file implementation with extensive logging
 - Identical functionality to modular version
 - Enhanced error reporting and debugging output
@@ -1122,7 +1164,7 @@ anki_converter/
 ├── setup.sh               # Cross-platform setup script
 ├── test_setup.py          # System verification script
 ├── requirements.txt       # Python dependencies
-├── 
+├──
 ├── # Modular components:
 ├── auth.py               # Authentication & credential management
 ├── deck_scraping.py      # Web scraping & browser automation
@@ -1131,7 +1173,7 @@ anki_converter/
 ├── sequential_extraction.py # Card processing logic
 ├── anki_export.py        # Anki deck generation
 ├── utils.py              # Shared utilities & configurations
-├── 
+├──
 ├── # Generated files (after setup):
 ├── .venv/                # Python virtual environment
 ├── activate.sh           # Unix activation script
@@ -1143,12 +1185,14 @@ anki_converter/
 ### Advanced Configuration
 
 **Environment Variables:**
+
 - Set `UCALGARY_ANKI_HEADLESS=false` to run Chrome visibly for debugging
 - Set `UCALGARY_ANKI_TIMEOUT=30` to adjust page load timeout (default: 10s)
 - Set `UCALGARY_ANKI_DEBUG=true` for verbose logging in modular version
 
 **Custom Chrome Options:**
 Edit `deck_scraping.py` or debug file to modify Chrome behavior:
+
 ```python
 # Add custom Chrome arguments
 chrome_options.add_argument("--window-size=1920,1080")
@@ -1170,32 +1214,38 @@ The generated cards use custom CSS and JavaScript for interactive features. Temp
 ## 📋 Development Log & Version History
 
 ### Version 2.0 - January 2025 (Latest)
+
 **Major Refactoring & Enhanced Windows Support**
 
 **🔄 Architecture Changes:**
+
 - Split monolithic script into modular components for maintainability
 - Created dual-version system: modular (`main.py`) + debug (`export_ucalgary_anki_debug.py`)
 - Implemented comprehensive cross-platform setup script (`setup.sh`)
 
 **🪟 Windows Compatibility Fixes:**
+
 - **Issue:** Setup script (`setup.sh`) failed in Windows Command Prompt and PowerShell
 - **Solution:** Updated documentation to require Git Bash for Windows users
 - **Improvement:** Added Windows-specific activation scripts (`.bat` and `.ps1`)
 - **Testing:** Verified fresh installation from scratch on Windows systems
 
 **📚 Documentation Overhaul:**
+
 - Rewrote README with clear OS-specific instructions
 - Added comprehensive troubleshooting section with Windows-specific solutions
 - Created beginner-friendly quick start guides
 - Added terminal requirements and common mistake warnings
 
 **🔧 Setup & Installation Improvements:**
+
 - **Auto-Detection:** Setup script automatically detects OS and installs appropriate dependencies
 - **Dependency Management:** Automatic installation of missing components (Homebrew, Git, Chrome)
 - **GUI Support:** Automatic tkinter installation and fallback handling
 - **Verification:** Added `test_setup.py` for comprehensive system verification
 
 **✨ New Features Added:**
+
 - **Collection Support:** Convert entire UCalgary Cards collections with multiple decks
 - **Hierarchical Organization:** Smart deck structure creation (Collection → Deck → Patient)
 - **Curriculum Detection:** Special handling for RIME-style collections
@@ -1204,19 +1254,23 @@ The generated cards use custom CSS and JavaScript for interactive features. Temp
 - **Progress Tracking:** Real-time progress bars for collection processing
 
 **🐛 Bug Fixes:**
+
 - Fixed virtual environment activation on Windows
 - Resolved ChromeDriver compatibility issues
 - Fixed image processing and sizing problems
 - Corrected path handling across different operating systems
 
 **📊 Testing & Validation:**
+
 - Comprehensive testing on Windows 11, macOS, and Ubuntu Linux
 - Fresh installation testing from GitHub clone
 - End-to-end workflow validation with real UCalgary Cards data
 - Cross-platform compatibility verification
 
 ### Version 1.0 - Original Implementation
+
 **Initial Features:**
+
 - Basic deck scraping from UCalgary Cards
 - Single-file Python script
 - Manual dependency installation
@@ -1224,6 +1278,7 @@ The generated cards use custom CSS and JavaScript for interactive features. Temp
 - Command-line only interface
 
 **Known Limitations (Resolved in v2.0):**
+
 - Windows setup complexity
 - Manual ChromeDriver management
 - Limited error handling
@@ -1237,6 +1292,7 @@ The generated cards use custom CSS and JavaScript for interactive features. Temp
 ### Test Coverage
 
 **System Tests (`test_setup.py`):**
+
 - ✅ Python environment validation
 - ✅ Dependency availability checks
 - ✅ GUI support verification
@@ -1244,6 +1300,7 @@ The generated cards use custom CSS and JavaScript for interactive features. Temp
 - ✅ Import capability testing
 
 **Manual Testing Scenarios:**
+
 - ✅ Fresh installation on clean systems
 - ✅ Individual deck conversion
 - ✅ Collection processing
@@ -1251,6 +1308,7 @@ The generated cards use custom CSS and JavaScript for interactive features. Temp
 - ✅ Cross-platform compatibility
 
 **Validated Platforms:**
+
 - ✅ Windows 10/11 with Git Bash
 - ✅ macOS (Intel and Apple Silicon)
 - ✅ Ubuntu 20.04+ / Debian-based Linux
@@ -1259,12 +1317,14 @@ The generated cards use custom CSS and JavaScript for interactive features. Temp
 ### Known Issues & Limitations
 
 **Current Limitations:**
+
 - Requires stable internet connection
 - Depends on UCalgary Cards site structure (may break with site updates)
 - Chrome/Chromium required (no Firefox support yet)
 - Large collections may take significant time to process
 
 **Planned Improvements:**
+
 - Firefox WebDriver support
 - Offline processing capabilities
 - Faster image processing
@@ -1296,39 +1356,44 @@ Contributions are welcome! Please feel free to:
 This project is open source and available under the MIT License.
 
 **Terms:**
+
 - Free for personal and educational use
 - No warranty or liability
 - Use responsibly and ethically
 
 **Compliance:**
+
 - Respect University of Calgary's terms of service
 - Follow academic integrity policies
 - Use only for legitimate educational purposes
 
-**Disclaimer:** 
+**Disclaimer:**
 This tool is for educational purposes only. Users are responsible for complying with their institution's policies regarding automated access to educational platforms. This project is not officially affiliated with or endorsed by the University of Calgary.
 
 ---
 
-*Last updated: January 2025*  
-*Repository: [https://github.com/ammargrowme/anki_converter](https://github.com/ammargrowme/anki_converter)*
+_Last updated: January 2025_  
+_Repository: [https://github.com/ammargrowme/anki_converter](https://github.com/ammargrowme/anki_converter)_
 
 ## 🔐 Security & Privacy
 
 ### Credential Management
 
 **Local Storage:**
+
 - Credentials are saved in `~/.uc_anki_config.json` on your local machine
 - File is stored in your user home directory (not in the project folder)
 - Uses JSON format with basic encoding (not plaintext)
 
 **Security Measures:**
+
 - ✅ **Local-only storage**: No credentials sent to external servers
 - ✅ **User-only access**: File permissions restricted to your user account
 - ✅ **Session management**: Browser sessions are properly closed after use
 - ✅ **No logging**: Passwords are never written to log files
 
 **To reset credentials:**
+
 ```bash
 # Delete the config file to start fresh
 rm ~/.uc_anki_config.json
@@ -1342,17 +1407,20 @@ rm ~/config.json
 ### Data Privacy
 
 **What data is accessed:**
+
 - Your UCalgary Cards login credentials (stored locally only)
 - Card content from decks you have access to
 - Images embedded in cards (downloaded temporarily)
 
 **What data is NOT accessed:**
+
 - Other students' private information
 - Grades or assessment data beyond card content
 - Personal information beyond what's in the cards
 - Any data from other UCalgary systems
 
 **Data handling:**
+
 - All processing happens locally on your machine
 - No data is sent to external services except UCalgary Cards
 - Generated Anki files contain only the card content you select
@@ -1361,11 +1429,13 @@ rm ~/config.json
 ### Network Security
 
 **HTTPS Usage:**
+
 - All connections to UCalgary Cards use HTTPS encryption
 - Browser sessions follow UCalgary's security protocols
 - No man-in-the-middle vulnerabilities
 
 **Firewall Compatibility:**
+
 - Uses standard HTTP/HTTPS ports (80/443)
 - Compatible with university network restrictions
 - No unusual network requirements
@@ -1373,17 +1443,20 @@ rm ~/config.json
 ### Responsible Use
 
 **Acceptable Use:**
+
 - ✅ Personal study and learning
 - ✅ Creating study materials from your enrolled courses
 - ✅ Academic research with proper permissions
 
 **Please DO NOT:**
+
 - ❌ Share generated decks containing copyrighted content
 - ❌ Use for courses you're not enrolled in
 - ❌ Violate UCalgary's academic integrity policies
 - ❌ Share your UCalgary credentials with others
 
 **Compliance:**
+
 - Respects UCalgary's terms of service
 - Follows academic integrity guidelines
 - Maintains student privacy standards
@@ -1395,6 +1468,7 @@ rm ~/config.json
 ### System Requirements Recap
 
 **Minimum Requirements:**
+
 - Python 3.8 or higher
 - Git (for Windows users: Git Bash required)
 - Google Chrome browser
@@ -1402,6 +1476,7 @@ rm ~/config.json
 - 1GB free disk space for dependencies
 
 **Recommended System:**
+
 - Python 3.9+ for best compatibility
 - 8GB RAM for large collections
 - SSD storage for faster processing
@@ -1410,12 +1485,14 @@ rm ~/config.json
 ### Known Limitations
 
 **Technical Limitations:**
+
 - Requires Chrome/Chromium (Firefox not supported)
 - Site structure dependent (may break with Cards updates)
 - Processing time scales with deck size
 - Large images may slow conversion
 
 **Access Limitations:**
+
 - Only works with decks you have legitimate access to
 - Requires active UCalgary student/staff account
 - Subject to UCalgary Cards site availability
@@ -1428,6 +1505,7 @@ This tool is designed for educational purposes to help UCalgary students create 
 
 **No Warranty:**
 This software is provided "as is" without warranty of any kind. Users are responsible for:
+
 - Ensuring they have proper access to content
 - Complying with university policies
 - Using the tool responsibly and ethically
@@ -1437,6 +1515,7 @@ This project is not officially affiliated with or endorsed by the University of 
 
 **User Responsibility:**
 Users are responsible for:
+
 - Complying with UCalgary's academic integrity policies
 - Respecting copyright and intellectual property rights
 - Using the tool only for legitimate educational purposes

@@ -10,22 +10,24 @@ def detect_curriculum_pattern(collection_name, decks_info):
     Returns: (is_curriculum, base_name, block_num, unit_num, week_num)
     """
     import re
-    
+
     # Pattern to match curriculum naming like "RIME 1.1.3", "FOUNDATIONS 2.3.1", etc.
     curriculum_pattern = r"^([A-Z][A-Z\s]+)\s+(\d+)\.(\d+)\.(\d+)$"
     match = re.match(curriculum_pattern, collection_name.strip().upper())
-    
+
     if match:
         base_name = match.group(1).strip()
         block_num = match.group(2)
         unit_num = match.group(3)
         week_num = match.group(4)
         return True, base_name, block_num, unit_num, week_num
-    
+
     return False, None, None, None, None
 
 
-def export_hierarchical_apkg(data, collection_name, decks_info, path, is_single_deck=False):
+def export_hierarchical_apkg(
+    data, collection_name, decks_info, path, is_single_deck=False
+):
     """
     Export cards with hierarchical deck structure:
 
@@ -259,9 +261,9 @@ table th {
   // More robust text comparison - normalize both sides
   selected.forEach(function(val){
     // Check if this selected value matches any of the correct answers
-    var normalizedVal = val.replace(/\s+/g, ' ').trim();
+    var normalizedVal = val.replace(/\\s+/g, ' ').trim();
     var isCorrect = answers.some(function(answer){
-      var normalizedAnswer = answer.replace(/\s+/g, ' ').trim();
+      var normalizedAnswer = answer.replace(/\\s+/g, ' ').trim();
       return normalizedVal === normalizedAnswer;
     });
     if(isCorrect) selectedCorrect++;
@@ -328,7 +330,7 @@ table th {
     for card in data:
         deck_title = card.get("deck_title", "Unknown Deck")
         patient_info = card.get("patient_info", "Unknown Patient")
-        
+
         # Check if this is a sequential card (no patient organization)
         is_sequential = card.get("is_sequential", False)
 
@@ -363,17 +365,17 @@ table th {
         # Group by patient only (no deck grouping needed for single deck)
         patient_structure = {}
         has_sequential_cards = False
-        
+
         for card in data:
             patient_info = card.get("patient_info", "Unknown Patient")
             is_sequential = card.get("is_sequential", False)
-            
+
             if is_sequential:
                 has_sequential_cards = True
                 patient_key = "__sequential__"
             else:
                 patient_key = patient_info
-                
+
             if patient_key not in patient_structure:
                 patient_structure[patient_key] = []
             patient_structure[patient_key].append(card)
@@ -382,23 +384,31 @@ table th {
         if has_sequential_cards and "__sequential__" in patient_structure:
             # For sequential decks, create a single deck with all cards directly under it
             hierarchical_name = f"{actual_deck_name} (Sequential Deck)"
-            
+
             deck = genanki.Deck(deck_id_counter, hierarchical_name)
             deck_id_counter += 1
-            
+
             sequential_cards = patient_structure["__sequential__"]
-            
+
             for i, card in enumerate(sequential_cards):
                 # Create Anki note from card data
-                _add_card_to_deck(deck, card, i, actual_deck_name, mcq_model, text_model, is_sequential=True)
-            
+                _add_card_to_deck(
+                    deck,
+                    card,
+                    i,
+                    actual_deck_name,
+                    mcq_model,
+                    text_model,
+                    is_sequential=True,
+                )
+
             decks.append(deck)
-        
+
         # Handle regular patient-organized cards
         for patient_info, cards in patient_structure.items():
             if patient_info == "__sequential__":
                 continue  # Already handled above
-                
+
             # Create simple hierarchy: "DeckName::Patient"
             hierarchical_name = f"{actual_deck_name}::{patient_info}"
 
@@ -406,7 +416,9 @@ table th {
             deck_id_counter += 1
 
             for i, card in enumerate(cards):
-                _add_card_to_deck(deck, card, i, actual_deck_name, mcq_model, text_model, patient_info)
+                _add_card_to_deck(
+                    deck, card, i, actual_deck_name, mcq_model, text_model, patient_info
+                )
 
             decks.append(deck)
 
@@ -425,8 +437,16 @@ table th {
                 deck_id_counter += 1
 
                 for i, card in enumerate(cards):
-                    _add_card_to_deck(deck, card, i, deck_title, mcq_model, text_model, patient_info, 
-                                    curriculum_info=(base_name, block_num, unit_num, week_num))
+                    _add_card_to_deck(
+                        deck,
+                        card,
+                        i,
+                        deck_title,
+                        mcq_model,
+                        text_model,
+                        patient_info,
+                        curriculum_info=(base_name, block_num, unit_num, week_num),
+                    )
 
                 decks.append(deck)
     else:
@@ -438,14 +458,24 @@ table th {
                     hierarchical_name = f"{collection_name}::{deck_title} (Sequential)"
                 else:
                     # Regular collection deck
-                    hierarchical_name = f"{collection_name}::{deck_title}::{patient_info}"
+                    hierarchical_name = (
+                        f"{collection_name}::{deck_title}::{patient_info}"
+                    )
 
                 deck = genanki.Deck(deck_id_counter, hierarchical_name)
                 deck_id_counter += 1
-                
+
                 for i, card in enumerate(cards):
-                    _add_card_to_deck(deck, card, i, deck_title, mcq_model, text_model, patient_info, 
-                                    collection_name=collection_name)
+                    _add_card_to_deck(
+                        deck,
+                        card,
+                        i,
+                        deck_title,
+                        mcq_model,
+                        text_model,
+                        patient_info,
+                        collection_name=collection_name,
+                    )
 
                 decks.append(deck)
 
@@ -457,8 +487,18 @@ table th {
     print(f"📊 Generated {len(decks)} sub-decks with hierarchical structure")
 
 
-def _add_card_to_deck(deck, card, index, deck_title, mcq_model, text_model, patient_info=None, 
-                     is_sequential=False, curriculum_info=None, collection_name=None):
+def _add_card_to_deck(
+    deck,
+    card,
+    index,
+    deck_title,
+    mcq_model,
+    text_model,
+    patient_info=None,
+    is_sequential=False,
+    curriculum_info=None,
+    collection_name=None,
+):
     """Helper function to add a card to a deck with proper formatting"""
     multi_flag = card.get("multi", False)
     multi = "1" if multi_flag else ""
@@ -485,21 +525,23 @@ def _add_card_to_deck(deck, card, index, deck_title, mcq_model, text_model, pati
 
     # Build comprehensive tags
     tags = card.get("tags", [])
-    
+
     if curriculum_info:
         base_name, block_num, unit_num, week_num = curriculum_info
-        tags.extend([
-            f"Curriculum_{base_name.replace(' ', '_')}",
-            f"Block_{block_num}",
-            f"Unit_{unit_num}",
-            f"Week_{week_num}",
-        ])
-    
+        tags.extend(
+            [
+                f"Curriculum_{base_name.replace(' ', '_')}",
+                f"Block_{block_num}",
+                f"Unit_{unit_num}",
+                f"Week_{week_num}",
+            ]
+        )
+
     if collection_name:
         tags.append(f"Collection_{collection_name.replace(' ', '_')}")
-    
+
     tags.append(f"Deck_{deck_title.replace(' ', '_')}")
-    
+
     if is_sequential:
         tags.extend(["Sequential_Mode", f"Question_{index+1}"])
     elif patient_info:
