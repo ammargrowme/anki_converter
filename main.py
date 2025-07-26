@@ -36,7 +36,19 @@ from utils import (
     show_script_running_dialog,
     close_script_running_dialog,
 )
+
+# Import both original and enhanced scraping methods
 from deck_scraping import selenium_scrape_deck, selenium_scrape_collection
+
+try:
+    from enhanced_scraping import enhanced_scrape_deck, enhanced_scrape_collection
+
+    ENHANCED_AVAILABLE = True
+    print("🚀 Enhanced fast scraping available")
+except ImportError:
+    ENHANCED_AVAILABLE = False
+    print("⚠️  Enhanced fast scraping not available, using original method")
+
 from anki_export import export_hierarchical_apkg, export_apkg
 
 
@@ -115,6 +127,22 @@ def main():
     # No card limit - process all cards
     card_limit = None
 
+    # Ask user about performance preference if enhanced method is available
+    use_enhanced = False
+    if ENHANCED_AVAILABLE:
+        try:
+            choice = (
+                input("\n🚀 Use enhanced fast scraping method? [Y/n]: ").strip().lower()
+            )
+            use_enhanced = choice in ["", "y", "yes"]
+            if use_enhanced:
+                print("⚡ Using enhanced fast scraping method (5-10x faster)")
+            else:
+                print("🐌 Using original scraping method (more stable)")
+        except:
+            use_enhanced = True  # Default to enhanced if input fails
+            print("⚡ Defaulting to enhanced fast scraping method")
+
     # Show progress dialog to inform user that script is running
     progress_dialog = show_script_running_dialog()
 
@@ -122,28 +150,56 @@ def main():
     try:
         if is_collection:
             print(f"\n🔍 Processing collection {collection_id}...")
-            cards, decks_info, collection_title = selenium_scrape_collection(
-                collection_id=collection_id,
-                email=email,
-                password=password,
-                base_host=host,
-                card_limit=card_limit,
-            )
+            if use_enhanced and ENHANCED_AVAILABLE:
+                cards, decks_info, collection_title = enhanced_scrape_collection(
+                    collection_id=collection_id,
+                    email=email,
+                    password=password,
+                    base_host=host,
+                    card_limit=card_limit,
+                )
+            else:
+                cards, decks_info, collection_title = selenium_scrape_collection(
+                    collection_id=collection_id,
+                    email=email,
+                    password=password,
+                    base_host=host,
+                    card_limit=card_limit,
+                )
             deck_name = collection_title
             deck_id = collection_id
             is_single_deck = False
 
         else:
             print(f"\n🔍 Processing individual deck...")
-            cards = selenium_scrape_deck(
-                deck_id=None,
-                email=email,
-                password=password,
-                base_host=host,
-                bag_id=bag_id,
-                details_url=details_url,
-                card_limit=card_limit,
-            )
+            if use_enhanced and ENHANCED_AVAILABLE:
+                # Parse deck_id from details_url if available
+                deck_id_param = None
+                if details_url and "/details/" in details_url:
+                    try:
+                        deck_id_param = details_url.split("/details/")[1].split("/")[0]
+                    except:
+                        pass
+
+                cards = enhanced_scrape_deck(
+                    deck_id=deck_id_param,
+                    email=email,
+                    password=password,
+                    base_host=host,
+                    bag_id=bag_id,
+                    details_url=details_url,
+                    card_limit=card_limit,
+                )
+            else:
+                cards = selenium_scrape_deck(
+                    deck_id=None,
+                    email=email,
+                    password=password,
+                    base_host=host,
+                    bag_id=bag_id,
+                    details_url=details_url,
+                    card_limit=card_limit,
+                )
 
             # Determine deck_id for output naming
             if details_url:
@@ -295,6 +351,13 @@ def parse_input_url(base_url_override):
             details_url = base_url_override
             bag_id = parse_qs(po.query).get("bag_id", [None])[0] or BAG_ID_DEFAULT
             print(f"🔍 Detected individual deck URL")
+        elif "/deck/" in po.path:
+            # This is a deck URL - convert to details format for compatibility
+            deck_id = po.path.split("/deck/")[1].split("/")[0]
+            bag_id = parse_qs(po.query).get("bag_id", [None])[0] or BAG_ID_DEFAULT
+            # Create details URL for compatibility with original system
+            details_url = f"{host}/details/{deck_id}?bag_id={bag_id}"
+            print(f"🔍 Detected deck URL (ID: {deck_id}, Bag: {bag_id})")
         else:
             # Neither collection nor details URL
             details_url = None

@@ -90,9 +90,13 @@ def extract_comprehensive_background(driver):
     # Method 2: Extract additional medical content (tables, charts) from card container
     try:
         # Look for the main card container
-        card_containers = driver.find_elements(By.CSS_SELECTOR, "body > div > div.container.card")
+        card_containers = driver.find_elements(
+            By.CSS_SELECTOR, "body > div > div.container.card"
+        )
         if not card_containers:
-            card_containers = driver.find_elements(By.CSS_SELECTOR, "div.container.card")
+            card_containers = driver.find_elements(
+                By.CSS_SELECTOR, "div.container.card"
+            )
 
         for container in card_containers:
             # Extract tables specifically
@@ -137,30 +141,49 @@ def extract_comprehensive_background(driver):
             # Extract any text content that might be medically relevant
             try:
                 # Look for specific content blocks - capture ALL div.block.group elements
-                content_blocks = container.find_elements(By.CSS_SELECTOR, "div.block.group")
+                content_blocks = container.find_elements(
+                    By.CSS_SELECTOR, "div.block.group"
+                )
                 for i, div in enumerate(content_blocks):
                     div_text = div.text.strip()
                     # Include ALL substantial content blocks, not just medical ones
-                    if len(div_text) > 20 and not div.find_elements(By.CSS_SELECTOR, "table, canvas, .monitor"):
+                    if len(div_text) > 20 and not div.find_elements(
+                        By.CSS_SELECTOR, "table, canvas, .monitor"
+                    ):
                         # Detect if this is medical information or question options
                         is_question_options = any(
-                            indicator in div_text for indicator in ["A.", "B.", "C.", "D.", "E.", "F."]
+                            indicator in div_text
+                            for indicator in ["A.", "B.", "C.", "D.", "E.", "F."]
                         )
 
-                        is_medical_info = (
-                            not is_question_options and any(
-                                word in div_text.lower() for word in [
-                                    "sensory", "motor", "reflexes", "symptoms", "findings",
-                                    "patient", "medical", "diagnosis", "treatment", "condition",
-                                    "exam", "language", "gait", "cerebellar",
-                                ]
-                            )
+                        is_medical_info = not is_question_options and any(
+                            word in div_text.lower()
+                            for word in [
+                                "sensory",
+                                "motor",
+                                "reflexes",
+                                "symptoms",
+                                "findings",
+                                "patient",
+                                "medical",
+                                "diagnosis",
+                                "treatment",
+                                "condition",
+                                "exam",
+                                "language",
+                                "gait",
+                                "cerebellar",
+                            ]
                         )
 
                         if is_medical_info:
-                            background_parts.append(f"<div><h4>🏥 Medical Information:</h4><p>{div_text}</p></div>")
+                            background_parts.append(
+                                f"<div><h4>🏥 Medical Information:</h4><p>{div_text}</p></div>"
+                            )
                         elif is_question_options:
-                            background_parts.append(f"<div><h4>📝 Question Options:</h4><p>{div_text}</p></div>")
+                            background_parts.append(
+                                f"<div><h4>📝 Question Options:</h4><p>{div_text}</p></div>"
+                            )
 
                 # If no block.group elements found, look for any substantial text content (fallback)
                 if not background_parts:
@@ -170,7 +193,9 @@ def extract_comprehensive_background(driver):
 
                     for div in all_divs:
                         # Skip divs that contain other complex elements
-                        if div.find_elements(By.CSS_SELECTOR, "div, table, canvas, img, form"):
+                        if div.find_elements(
+                            By.CSS_SELECTOR, "div, table, canvas, img, form"
+                        ):
                             continue
 
                         div_text = div.text.strip()
@@ -282,13 +307,25 @@ def extract_deck_metadata(driver, base_host, deck_id, bag_id):
                     if matches:
                         if "of" in pattern:
                             # For "X of Y" pattern, take the Y (total)
-                            potential_totals = [int(match[1]) for match in matches if int(match[1]) > 0]
+                            potential_totals = [
+                                int(match[1]) for match in matches if int(match[1]) > 0
+                            ]
                         else:
-                            potential_totals = [int(match) if isinstance(match, str) else int(match[0]) 
-                                             for match in matches if (int(match) if isinstance(match, str) else int(match[0])) > 0]
-                        
+                            potential_totals = [
+                                int(match) if isinstance(match, str) else int(match[0])
+                                for match in matches
+                                if (
+                                    int(match)
+                                    if isinstance(match, str)
+                                    else int(match[0])
+                                )
+                                > 0
+                            ]
+
                         if potential_totals:
-                            total_cards = max(potential_totals)  # Take the largest reasonable number
+                            total_cards = max(
+                                potential_totals
+                            )  # Take the largest reasonable number
                             break
 
         except Exception as e:
@@ -297,7 +334,9 @@ def extract_deck_metadata(driver, base_host, deck_id, bag_id):
 
         # Try the specific patient selector
         try:
-            patient_elements = driver.find_elements(By.CSS_SELECTOR, "div.patients > div > h3")
+            patient_elements = driver.find_elements(
+                By.CSS_SELECTOR, "div.patients > div > h3"
+            )
             for elem in patient_elements:
                 patient_name = elem.text.strip()
                 if patient_name and patient_name not in patients:
@@ -308,8 +347,13 @@ def extract_deck_metadata(driver, base_host, deck_id, bag_id):
         # Fallback selectors for patient information
         if not patients:
             fallback_selectors = [
-                "div.patients h3", "div.patients h4", "div.patients .patient-name",
-                ".patient h3", ".patient-title", "h3[class*='patient']", "div[class*='patient'] h3",
+                "div.patients h3",
+                "div.patients h4",
+                "div.patients .patient-name",
+                ".patient h3",
+                ".patient-title",
+                "h3[class*='patient']",
+                "div[class*='patient'] h3",
             ]
 
             for selector in fallback_selectors:
@@ -317,7 +361,11 @@ def extract_deck_metadata(driver, base_host, deck_id, bag_id):
                     patient_elements = driver.find_elements(By.CSS_SELECTOR, selector)
                     for elem in patient_elements:
                         patient_name = elem.text.strip()
-                        if patient_name and patient_name not in patients and len(patient_name) > 2:
+                        if (
+                            patient_name
+                            and patient_name not in patients
+                            and len(patient_name) > 2
+                        ):
                             patients.append(patient_name)
                     if patients:  # Stop if we found patients
                         break
@@ -327,7 +375,9 @@ def extract_deck_metadata(driver, base_host, deck_id, bag_id):
         # If still no patients found, look for any links or references to patients
         if not patients:
             try:
-                patient_links = driver.find_elements(By.CSS_SELECTOR, "a[href*='/patient/']")
+                patient_links = driver.find_elements(
+                    By.CSS_SELECTOR, "a[href*='/patient/']"
+                )
                 for link in patient_links:
                     patient_text = link.text.strip()
                     if patient_text and patient_text not in patients:
@@ -349,3 +399,104 @@ def extract_patients_from_deck_page(driver, base_host, deck_id, bag_id):
     """
     patients_list, _ = extract_deck_metadata(driver, base_host, deck_id, bag_id)
     return patients_list
+
+
+def extract_card_content_from_page(driver):
+    """
+    Extract card content from the current page (for fast scraper browser fallback).
+
+    Args:
+        driver: Selenium WebDriver positioned on a card page
+
+    Returns:
+        dict: Card data with question, background, patient_info, is_multi, etc.
+    """
+    import requests
+    from image_processing import extract_images_from_page
+
+    # Extract comprehensive background content
+    background = extract_comprehensive_background(driver)
+
+    # Extract patient info from current page
+    patient_info = "Unknown Patient"
+    try:
+        # Look for patient info in various locations
+        patient_selectors = [".patient-info", ".card-patient", "h4", ".info-section h4"]
+
+        for selector in patient_selectors:
+            try:
+                patient_elem = driver.find_element(By.CSS_SELECTOR, selector)
+                text = patient_elem.text.strip()
+                if text and len(text) < 100:  # Reasonable patient info length
+                    patient_info = text
+                    break
+            except Exception:
+                continue
+
+    except Exception:
+        pass
+
+    # Prepare session with Selenium cookies for image downloading
+    sess = requests.Session()
+    for c in driver.get_cookies():
+        sess.cookies.set(c["name"], c["value"])
+
+    # Extract images from the current page
+    try:
+        page_images = extract_images_from_page(driver, sess, driver.current_url)
+
+        # Add images to background if found
+        if page_images:
+            if background:
+                background = page_images + "<br/><br/>" + background
+            else:
+                background = page_images
+    except Exception:
+        pass  # Continue without images if extraction fails
+
+    # Extract question
+    question = "[No Question]"
+    try:
+        qel = driver.find_element(
+            By.CSS_SELECTOR, "#workspace > div.solution.container > form > h3"
+        )
+        question = qel.text.strip()
+    except Exception:
+        pass
+
+    # Determine if multi-select
+    is_multi = False
+    try:
+        form = driver.find_element(
+            By.CSS_SELECTOR, "#workspace > div.solution.container > form"
+        )
+        is_multi = form.get_attribute("rel") == "pickmany"
+    except Exception:
+        pass
+
+    # Extract options (for MCQ cards)
+    options = []
+    try:
+        option_elements = driver.find_elements(
+            By.CSS_SELECTOR, "input[type='radio'], input[type='checkbox']"
+        )
+        for i, option_elem in enumerate(option_elements):
+            try:
+                label = driver.find_element(
+                    By.CSS_SELECTOR, f"label[for='{option_elem.get_attribute('id')}']"
+                )
+                option_text = label.text.strip()
+                if option_text:
+                    options.append((str(i), option_text))
+            except:
+                continue
+    except Exception:
+        pass
+
+    return {
+        "question": question,
+        "background": background,
+        "patient_info": patient_info,
+        "is_multi": is_multi,
+        "options": options,
+    }

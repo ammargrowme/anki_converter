@@ -58,6 +58,12 @@ class FastScraper:
         self.base_host = base_host
         self.session = None
         self.driver = None
+        self.auth_cookies = {}
+        self.last_auth_time = 0
+        self.auth_timeout = 1800  # 30 minutes session timeout
+        self.max_retries = 3
+        self.cards_processed = 0
+        self.failed_authentications = 0
 
     async def __aenter__(self):
         """Async context manager entry"""
@@ -83,12 +89,32 @@ class FastScraper:
         # Initialize browser for auth (minimal usage)
         await self._authenticate_browser()
 
+    async def _check_and_refresh_auth(self):
+        """Check if authentication needs refresh and refresh if necessary"""
+        current_time = time.time()
+
+        # Check if we need to refresh authentication
+        if (
+            current_time - self.last_auth_time > self.auth_timeout
+            or self.failed_authentications > 5
+        ):
+
+            print("🔄 Refreshing authentication session...")
+            await self._authenticate_browser()
+            self.failed_authentications = 0
+
     async def _authenticate_browser(self):
         """Authenticate using browser and extract session cookies"""
         print("🔐 Authenticating with browser...")
 
         # Setup minimal browser
         opts = get_chrome_options()
+        if self.driver:
+            try:
+                self.driver.quit()
+            except:
+                pass
+
         self.driver = webdriver.Chrome(options=opts)
         setup_driver_print_override(self.driver)
 
@@ -97,15 +123,21 @@ class FastScraper:
             selenium_login(self.driver, self.email, self.password, self.base_host)
 
             # Extract session cookies for API calls
-            cookies = {}
+            self.auth_cookies = {}
             for cookie in self.driver.get_cookies():
-                cookies[cookie["name"]] = cookie["value"]
+                self.auth_cookies[cookie["name"]] = cookie["value"]
 
             # Add cookies to aiohttp session
-            for name, value in cookies.items():
+            for name, value in self.auth_cookies.items():
                 self.session.cookie_jar.update_cookies({name: value})
 
+            # Record successful authentication time
+            self.last_auth_time = time.time()
             print("✅ Authentication successful, cookies extracted")
+
+        except Exception as e:
+            print(f"❌ Authentication failed: {e}")
+            raise
 
         except Exception as e:
             print(f"❌ Authentication failed: {e}")
@@ -115,15 +147,20 @@ class FastScraper:
         self, deck_id: str, bag_id: str, card_limit: Optional[int] = None
     ) -> List[Dict]:
         """
-        Fast deck scraping using API calls instead of browser navigation
+        Fast deck scraping using API calls with robust authentication handling
 
         Process:
         1. Get card IDs from printdeck page (1 browser request)
         2. Batch fetch all card solutions via API (concurrent)
         3. Extract background content efficiently
         4. Process images in parallel
+        5. Monitor and refresh authentication as needed
         """
         print(f"⚡ Fast scraping deck {deck_id}...")
+
+        # Reset processing counters for this deck
+        self.cards_processed = 0
+        self.failed_authentications = 0
 
         # Step 1: Get card IDs (requires browser for printdeck page)
         card_ids = await self._get_card_ids_fast(deck_id, bag_id)
@@ -134,10 +171,17 @@ class FastScraper:
 
         print(f"📊 Processing {len(card_ids)} cards...")
 
-        # Step 2: Batch process cards
+        # Step 2: Batch process cards with authentication monitoring
         cards = await self._batch_process_cards(card_ids, deck_id, bag_id)
 
+        # Report authentication statistics
+        success_rate = (self.cards_processed / len(card_ids)) * 100 if card_ids else 0
         print(f"✅ Fast scraping completed: {len(cards)} cards processed")
+        if self.failed_authentications > 0:
+            print(
+                f"📊 Authentication: {self.cards_processed} successful, {self.failed_authentications} failed, {success_rate:.1f}% success rate"
+            )
+
         return cards
 
     async def _get_card_ids_fast(self, deck_id: str, bag_id: str) -> List[str]:
@@ -147,6 +191,22 @@ class FastScraper:
         try:
             self.driver.get(printdeck_url)
             time.sleep(1)  # Minimal wait
+
+            # Debug: Check what page we're actually on
+            print(f"📍 Navigating to printdeck for deck {deck_id}")
+
+            # Check if we're still authenticated
+            if "login" in self.driver.current_url.lower():
+                print("❌ Redirected to login page - authentication failed")
+                return []
+
+            # Check for specific error indicators
+            if (
+                "error 404" in self.driver.title.lower()
+                or "not found" in self.driver.title.lower()
+            ):
+                print("❌ Error page detected")
+                return []
 
             # Extract card IDs from solution buttons
             submit_buttons = self.driver.find_elements(
@@ -249,34 +309,116 @@ class FastScraper:
     async def _process_single_card_fast(
         self, card_id: str, deck_id: str, semaphore: asyncio.Semaphore
     ) -> Optional[Dict]:
-        """Process a single card using API calls instead of browser navigation"""
+        """Process a single card using API calls with browser fallback"""
         async with semaphore:  # Limit concurrent requests
             try:
                 # Step 1: Get card page HTML via API
                 card_url = f"{self.base_host}/card/{card_id}"
+
+                # Add authentication check before processing
+                await self._check_and_refresh_auth()
+
                 async with self.session.get(card_url) as response:
-                    if response.status != 200:
+                    if response.status == 403:
+                        # Authentication issue, refresh and retry
+                        await self._check_and_refresh_auth()
+                        async with self.session.get(card_url) as retry_response:
+                            if retry_response.status != 200:
+                                print(
+                                    f"  ⚠️  Failed to fetch card {card_id} after auth refresh: HTTP {retry_response.status}"
+                                )
+                                return await self._fallback_browser_card(
+                                    card_id, deck_id
+                                )
+                            html_content = await retry_response.text()
+                    elif response.status != 200:
                         print(
                             f"  ⚠️  Failed to fetch card {card_id}: HTTP {response.status}"
                         )
-                        return None
-
-                    html_content = await response.text()
+                        return await self._fallback_browser_card(card_id, deck_id)
+                    else:
+                        html_content = await response.text()
 
                 # Step 2: Parse card data from HTML
                 card_data = self._parse_card_html(html_content, card_id)
 
-                # Step 3: Get solution via API
+                # Validate that we got meaningful content
+                if not card_data.question and not card_data.background:
+                    print(
+                        f"  ⚠️  Empty content for card {card_id}, trying browser fallback..."
+                    )
+                    return await self._fallback_browser_card(card_id, deck_id)
+
+                # Step 3: Get solution via API (with enhanced retry)
                 solution_data = await self._get_solution_fast(
                     card_id, card_data.options
                 )
 
+                # If solution API failed completely, we still have the card content
+                # The solution will just be empty, but that's better than no card
+                if not solution_data:
+                    print(
+                        f"  ℹ️  Using card without solution for {card_id} (API authentication issue)"
+                    )
+
                 # Step 4: Build final card
-                return self._build_card_dict(card_data, solution_data, deck_id)
+                final_card = self._build_card_dict(card_data, solution_data, deck_id)
+
+                # Validate final card has meaningful content
+                if self._is_card_content_adequate(final_card):
+                    return final_card
+                else:
+                    print(
+                        f"  ⚠️  Inadequate content for card {card_id}, trying browser fallback..."
+                    )
+                    return await self._fallback_browser_card(card_id, deck_id)
 
             except Exception as e:
                 print(f"  ❌ Error processing card {card_id}: {e}")
+                print(f"  🔄 Trying browser fallback for card {card_id}...")
+                return await self._fallback_browser_card(card_id, deck_id)
+
+    def _is_card_content_adequate(self, card: Dict) -> bool:
+        """Check if card has adequate content to be useful"""
+        if not card:
+            return False
+
+        front = card.get("front", "")
+        back = card.get("back", "")
+
+        # Check for minimum content thresholds
+        return (len(front) > 50 and len(back) > 20) or len(front) > 200
+
+    async def _fallback_browser_card(
+        self, card_id: str, deck_id: str
+    ) -> Optional[Dict]:
+        """Fallback method using browser navigation for difficult cards"""
+        if not self.driver:
+            print(f"  ❌ No browser available for fallback on card {card_id}")
+            return None
+
+        try:
+            print(f"  🌐 Browser fallback for card {card_id}...")
+
+            # Navigate to card
+            card_url = f"{self.base_host}/card/{card_id}"
+            self.driver.get(card_url)
+            time.sleep(2)  # Allow page to load
+
+            # Extract content using browser
+            from content_extraction import extract_card_content_from_page
+
+            card_data = extract_card_content_from_page(self.driver)
+            if card_data:
+                card_data["deck_id"] = deck_id
+                return card_data
+            else:
+                print(f"  ❌ Browser fallback failed for card {card_id}")
                 return None
+
+        except Exception as e:
+            print(f"  ❌ Browser fallback error for card {card_id}: {e}")
+            return None
 
     def _parse_card_html(self, html: str, card_id: str) -> CardData:
         """Parse card data from HTML content efficiently using regex"""
@@ -339,31 +481,114 @@ class FastScraper:
     async def _get_solution_fast(
         self, card_id: str, options: List[Tuple[str, str]]
     ) -> Dict:
-        """Get card solution via direct API call"""
+        """Get card solution via direct API call with robust authentication handling"""
         sol_url = f"{self.base_host}/solution/{card_id}/"
 
-        try:
-            # Try empty guess first
-            data = {"timer": "1"}
-            async with self.session.post(sol_url, data=data) as response:
-                if response.status == 200:
-                    return await response.json()
+        # Check and refresh authentication if needed
+        await self._check_and_refresh_auth()
 
-        except Exception:
-            pass
+        # Ensure we have proper headers for API calls
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-Requested-With": "XMLHttpRequest",  # Important for AJAX calls
+            "Referer": f"{self.base_host}/",
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        }
 
-        # Fallback: try with all options
-        try:
-            data = {"timer": "2"}
-            for opt_id, _ in options:
-                data[f"guess[]"] = opt_id
+        # Try multiple approaches with authentication retry
+        for attempt in range(self.max_retries):
+            try:
+                # Try empty guess first
+                data = {"timer": "1"}
+                async with self.session.post(
+                    sol_url, data=data, headers=headers
+                ) as response:
+                    if response.status == 200:
+                        content_type = response.headers.get("content-type", "")
+                        if "application/json" in content_type:
+                            result = await response.json()
+                            self.cards_processed += 1
+                            return result
+                        else:
+                            # Got HTML instead of JSON - authentication issue
+                            self.failed_authentications += 1
+                            if attempt < self.max_retries - 1:
+                                print(
+                                    f"  🔄 Auth expired for card {card_id}, refreshing... (attempt {attempt + 1})"
+                                )
+                                await self._check_and_refresh_auth()
+                                continue
+                            else:
+                                print(
+                                    f"  ⚠️  Solution API returned HTML for card {card_id} after {self.max_retries} attempts"
+                                )
+                                return {}
+                    elif response.status == 403:
+                        # Forbidden - definitely auth issue
+                        self.failed_authentications += 1
+                        if attempt < self.max_retries - 1:
+                            print(
+                                f"  🔄 403 Forbidden for card {card_id}, refreshing auth... (attempt {attempt + 1})"
+                            )
+                            await self._check_and_refresh_auth()
+                            continue
+                        else:
+                            print(
+                                f"  ⚠️  403 Forbidden for card {card_id} after {self.max_retries} attempts"
+                            )
+                            return {}
 
-            async with self.session.post(sol_url, data=data) as response:
-                if response.status == 200:
-                    return await response.json()
+            except Exception as e:
+                if attempt < self.max_retries - 1:
+                    print(
+                        f"  🔄 Solution API error for card {card_id}, retrying... (attempt {attempt + 1}): {e}"
+                    )
+                    await asyncio.sleep(1)  # Brief pause before retry
+                    continue
+                else:
+                    print(
+                        f"  ⚠️  Solution API error for card {card_id} after {self.max_retries} attempts: {e}"
+                    )
 
-        except Exception as e:
-            print(f"  ⚠️  Solution API failed for card {card_id}: {e}")
+            # Fallback: try with all options
+            try:
+                data = {"timer": "2"}
+                for opt_id, _ in options:
+                    data[f"guess[]"] = opt_id
+
+                async with self.session.post(
+                    sol_url, data=data, headers=headers
+                ) as response:
+                    if response.status == 200:
+                        content_type = response.headers.get("content-type", "")
+                        if "application/json" in content_type:
+                            result = await response.json()
+                            self.cards_processed += 1
+                            return result
+                        else:
+                            if attempt < self.max_retries - 1:
+                                print(
+                                    f"  🔄 Fallback failed for card {card_id}, retrying... (attempt {attempt + 1})"
+                                )
+                                await self._check_and_refresh_auth()
+                                continue
+                            else:
+                                print(
+                                    f"  ⚠️  Fallback solution API failed for card {card_id} after {self.max_retries} attempts"
+                                )
+                                return {}
+
+            except Exception as e:
+                if attempt < self.max_retries - 1:
+                    print(
+                        f"  🔄 Fallback error for card {card_id}, retrying... (attempt {attempt + 1}): {e}"
+                    )
+                    continue
+                else:
+                    print(
+                        f"  ⚠️  Fallback solution API failed for card {card_id} after {self.max_retries} attempts: {e}"
+                    )
 
         return {}
 
@@ -560,5 +785,28 @@ async def fast_scrape_collection(
 
 
 def run_fast_scraping_sync(coro):
-    """Helper to run async scraping from sync code"""
-    return asyncio.run(coro)
+    """Helper to run async scraping from sync code with event loop handling"""
+    try:
+        # Try to get the current event loop
+        loop = asyncio.get_running_loop()
+        # If we're already in an event loop, we need to create a task
+        import concurrent.futures
+        import threading
+
+        # Run in a separate thread to avoid event loop conflicts
+        def run_in_thread():
+            # Create new event loop for this thread
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+            try:
+                return new_loop.run_until_complete(coro)
+            finally:
+                new_loop.close()
+
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(run_in_thread)
+            return future.result()
+
+    except RuntimeError:
+        # No event loop running, safe to use asyncio.run()
+        return asyncio.run(coro)

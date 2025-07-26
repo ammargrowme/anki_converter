@@ -33,16 +33,21 @@ def benchmark_deck_scraping(
 
     results = {}
 
+    # Construct the details_url the same way main.py does
+    details_url = f"{base_host}/details/{deck_id}?bag_id={bag_id}"
+
     # Test 1: Original Selenium approach
     print("\n🐌 Testing ORIGINAL Selenium approach...")
     start_time = time.time()
     try:
+        # Call it the same way as main.py - with deck_id=None and details_url
         cards_selenium = selenium_scrape_deck(
-            deck_id=deck_id,
+            deck_id=None,  # Same as main.py
             email=email,
             password=password,
             base_host=base_host,
             bag_id=bag_id,
+            details_url=details_url,  # Pass the full URL
             card_limit=card_limit,
         )
         selenium_time = time.time() - start_time

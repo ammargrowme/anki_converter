@@ -307,10 +307,11 @@ def analyze_apkg(apkg_path):
                     )
                     print(f"       Note IDs: {note_ids}")
 
-            # Enhanced duplicate analysis - check for EXACT duplicates only
-            print(f"\n🔍 EXACT DUPLICATE ANALYSIS:")
+            # Enhanced duplicate analysis - check for TRUE duplicates only
+            print(f"\n🔍 COMPREHENSIVE DUPLICATE ANALYSIS:")
             exact_question_answer_pairs = {}
             true_exact_duplicates = {}
+            question_variations = {}
 
             for note_id, fields in all_notes:
                 field_list = fields.split("\x1f")
@@ -318,66 +319,138 @@ def analyze_apkg(apkg_path):
                     front_content = field_list[0]
                     back_content = field_list[1] if len(field_list) > 1 else ""
 
-                    # Extract just the question text (remove images and HTML)
+                    # Extract comprehensive content including background, options, and images
                     question_text = extract_question_text(front_content)
-                    # Remove base64 image data from question
-                    question_text = re.sub(r'data:image/[^"\']*', "", question_text)
                     question_text = re.sub(r"\s+", " ", question_text).strip()
-
-                    # Extract answer text
+                    
+                    # Extract answer/explanation content
                     answer_text = extract_question_text(back_content)
-                    answer_text = re.sub(r'data:image/[^"\']*', "", answer_text)
                     answer_text = re.sub(r"\s+", " ", answer_text).strip()
-
-                    # Create a FULL signature for EXACT matching (question + answer)
-                    exact_signature = f"{question_text}||{answer_text}"
-
-                    # Track EXACT question+answer combinations
-                    if exact_signature in exact_question_answer_pairs:
-                        if exact_signature not in true_exact_duplicates:
-                            true_exact_duplicates[exact_signature] = {
-                                "original": exact_question_answer_pairs[exact_signature],
+                    
+                    # Extract any background/patient info that appears in both front and back
+                    background_info = ""
+                    # Look for patient context, vital signs, etc.
+                    background_patterns = [
+                        r"(\d+\s*year[s]?\s*old)",
+                        r"(vital signs?:.*?)(?=\n|$)",
+                        r"(temperature:.*?)(?=\n|$)",
+                        r"(blood pressure:.*?)(?=\n|$)",
+                        r"(heart rate:.*?)(?=\n|$)",
+                        r"(physical exam(?:ination)?:.*?)(?=\n|$)",
+                        r"(history:.*?)(?=\n|$)",
+                        r"(presenting complaint:.*?)(?=\n|$)"
+                    ]
+                    
+                    for pattern in background_patterns:
+                        matches = re.findall(pattern, front_content + " " + back_content, re.IGNORECASE)
+                        if matches:
+                            background_info += " ".join(matches) + " "
+                    
+                    background_info = re.sub(r"\s+", " ", background_info).strip()
+                    
+                    # Create COMPLETE signature: question + background + answer
+                    # This ensures we only flag TRUE duplicates, not educational variations
+                    complete_signature = f"{question_text}||{background_info}||{answer_text}"
+                    
+                    # Also track question patterns to identify educational variations
+                    question_base = re.sub(r'\b(patient|case|scenario)\s*\d+\b', 'PATIENT_X', question_text.lower())
+                    question_base = re.sub(r'\b\d+\s*year[s]?\s*old\b', 'AGE_X', question_base)
+                    
+                    # Track EXACT duplicates (identical in all aspects)
+                    if complete_signature in exact_question_answer_pairs:
+                        if complete_signature not in true_exact_duplicates:
+                            true_exact_duplicates[complete_signature] = {
+                                "original": exact_question_answer_pairs[complete_signature],
                                 "duplicates": []
                             }
-                        true_exact_duplicates[exact_signature]["duplicates"].append({
+                        true_exact_duplicates[complete_signature]["duplicates"].append({
                             "note_id": note_id,
-                            "question": question_text[:200] + "..." if len(question_text) > 200 else question_text,
+                            "question": question_text[:150] + "..." if len(question_text) > 150 else question_text,
+                            "background": background_info[:100] + "..." if len(background_info) > 100 else background_info,
                             "answer": answer_text[:100] + "..." if len(answer_text) > 100 else answer_text,
                         })
                     else:
-                        exact_question_answer_pairs[exact_signature] = {
+                        exact_question_answer_pairs[complete_signature] = {
                             "note_id": note_id,
-                            "question": question_text[:200] + "..." if len(question_text) > 200 else question_text,
+                            "question": question_text[:150] + "..." if len(question_text) > 150 else question_text,
+                            "background": background_info[:100] + "..." if len(background_info) > 100 else background_info,
                             "answer": answer_text[:100] + "..." if len(answer_text) > 100 else answer_text,
                         }
+                    
+                    # Track question patterns for educational variation analysis
+                    if question_base in question_variations:
+                        question_variations[question_base].append({
+                            "note_id": note_id,
+                            "original_question": question_text[:100] + "..." if len(question_text) > 100 else question_text,
+                            "background": background_info[:50] + "..." if len(background_info) > 50 else background_info
+                        })
+                    else:
+                        question_variations[question_base] = [{
+                            "note_id": note_id,
+                            "original_question": question_text[:100] + "..." if len(question_text) > 100 else question_text,
+                            "background": background_info[:50] + "..." if len(background_info) > 50 else background_info
+                        }]
 
-            # Report ONLY true exact duplicates
+            # Report TRUE exact duplicates and educational variations separately
             if true_exact_duplicates:
-                print(f"\n🚨 EXACT DUPLICATE QUESTIONS FOUND:")
-                print(f"   ⚠️  These are identical question+answer pairs (potential errors)")
-                for i, (exact_sig, dup_data) in enumerate(true_exact_duplicates.items()):
-                    print(f"\n--- 🔄 EXACT DUPLICATE GROUP {i+1} ---")
-                    question_part = exact_sig.split("||")[0]
-                    answer_part = exact_sig.split("||")[1]
-                    print(f"📝 Question: {question_part[:150]}...")
-                    print(f"💬 Answer: {answer_part[:100]}...")
+                print(f"\n🚨 TRUE EXACT DUPLICATES FOUND:")
+                print(f"   ⚠️  These are IDENTICAL in question, background, AND answer (likely errors)")
+                for i, (complete_sig, dup_data) in enumerate(true_exact_duplicates.items()):
+                    print(f"\n--- 🔄 TRUE DUPLICATE GROUP {i+1} ---")
+                    parts = complete_sig.split("||")
+                    question_part = parts[0] if len(parts) > 0 else ""
+                    background_part = parts[1] if len(parts) > 1 else ""
+                    answer_part = parts[2] if len(parts) > 2 else ""
+                    
+                    print(f"📝 Question: {question_part[:100]}...")
+                    if background_part:
+                        print(f"🏥 Background: {background_part[:80]}...")
+                    print(f"💬 Answer: {answer_part[:80]}...")
 
                     # Show original
                     original = dup_data["original"]
-                    print(f"  � Original Note ID: {original['note_id']}")
+                    print(f"  📋 Original Note ID: {original['note_id']}")
 
                     # Show exact duplicates
                     for j, dup in enumerate(dup_data["duplicates"]):
                         print(f"  🔄 Exact Duplicate {j+1} Note ID: {dup['note_id']}")
                         
-                print(f"\n📊 EXACT DUPLICATE SUMMARY:")
-                print(f"  ⚠️  {len(true_exact_duplicates)} exact duplicate question+answer pairs found")
+                print(f"\n📊 TRUE DUPLICATE SUMMARY:")
+                print(f"  ⚠️  {len(true_exact_duplicates)} true duplicate question+background+answer combinations found")
                 total_duplicate_cards = sum(len(dup_data["duplicates"]) for dup_data in true_exact_duplicates.values())
                 print(f"  🔄 {total_duplicate_cards} total duplicate cards that could be removed")
             else:
-                print(f"✅ NO EXACT DUPLICATE QUESTIONS FOUND!")
-                print(f"   🎓 All question+answer combinations are unique (as expected for educational content)")
-                print(f"   📚 Similar scenarios with different questions/answers are intentional educational variants")
+                print(f"✅ NO TRUE EXACT DUPLICATES FOUND!")
+                print(f"   🎓 All question+background+answer combinations are unique")
+            
+            # Show educational variations (same question type, different scenarios)
+            educational_variations = {k: v for k, v in question_variations.items() if len(v) > 1}
+            if educational_variations:
+                print(f"\n📚 EDUCATIONAL VARIATIONS DETECTED:")
+                print(f"   ✅ These are VALID variations (same question type, different patients/scenarios)")
+                
+                variation_count = 0
+                for question_pattern, variations in list(educational_variations.items())[:5]:  # Show first 5
+                    if len(variations) > 1:
+                        variation_count += 1
+                        print(f"\n--- 📖 VARIATION GROUP {variation_count} ---")
+                        print(f"🎯 Question Pattern: {question_pattern[:100]}...")
+                        print(f"� {len(variations)} variations found:")
+                        for j, var in enumerate(variations[:3]):  # Show first 3 variations
+                            print(f"  📝 Variation {j+1} (ID: {var['note_id']}): {var['original_question']}")
+                        if len(variations) > 3:
+                            print(f"  ... and {len(variations) - 3} more variations")
+                
+                if len(educational_variations) > 5:
+                    print(f"\n... and {len(educational_variations) - 5} more variation groups")
+                    
+                total_variation_cards = sum(len(v) for v in educational_variations.values())
+                print(f"\n📈 EDUCATIONAL VARIATION SUMMARY:")
+                print(f"  🎓 {len(educational_variations)} question types with multiple scenarios")
+                print(f"  📚 {total_variation_cards} total cards with educational variations")
+                print(f"  ✅ These are INTENTIONAL and VALUABLE for learning")
+            else:
+                print(f"\n📚 No educational variations detected - each question is completely unique.")
 
             print(f"\n📊 UNIQUE QUESTIONS SUMMARY:")
             print(f"  📝 Total unique question+answer combinations: {len(exact_question_answer_pairs)}")
